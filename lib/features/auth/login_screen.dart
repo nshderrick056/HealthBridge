@@ -67,26 +67,28 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'HealthBridge',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.text,
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'HealthBridge',
+                                    style: TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.text,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  'RWANDA',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
+                                  Text(
+                                    'RWANDA',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
