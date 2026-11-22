@@ -52,3 +52,63 @@ class AlertSummary {
   final List<String> dangerSigns;
 }
 
+class AlertEvent {
+  AlertEvent.fromJson(Map<String, dynamic> j)
+    : from = j['fromStatus'] == null
+          ? null
+          : AlertStatus.parse(j['fromStatus'] as String),
+      to = AlertStatus.parse(j['toStatus'] as String),
+      note = j['note'] as String?,
+      actor = j['actor'] as String?,
+      at = _date(j['createdAt']);
+
+  final AlertStatus? from;
+  final AlertStatus to;
+  final String? note;
+  final String? actor;
+  final DateTime? at;
+}
+
+class AlertDetail {
+  AlertDetail.fromJson(Map<String, dynamic> j)
+    : summary = AlertSummary.fromJson({
+        ...j,
+        'isPartial': (j['visit'] as Map?)?['isPartial'],
+        'dangerSigns': [
+          for (final s in (j['dangerSigns'] as List? ?? const []))
+            (s as Map)['label'],
+        ],
+        'village': (j['patient'] as Map?)?['village'],
+      }),
+      next = [
+        for (final s in (j['next'] as List? ?? const []))
+          AlertStatus.parse(s as String),
+      ],
+      shortCode = (j['visit'] as Map?)?['shortCode'] as String?,
+      recordedAt = _date((j['visit'] as Map?)?['recordedAt']),
+      notes = (j['visit'] as Map?)?['notes'] as String?,
+      answers = Map<String, dynamic>.from(
+        (j['visit'] as Map?)?['answers'] as Map? ?? const {},
+      ),
+      patientSex = (j['patient'] as Map?)?['sex'] as String?,
+      patientAge = ((j['patient'] as Map?)?['ageEstimate'] as num?)?.toInt(),
+      chwPhone = (j['chw'] as Map?)?['phone'] as String?,
+      events = [
+        for (final e in (j['events'] as List? ?? const []))
+          AlertEvent.fromJson(e as Map<String, dynamic>),
+      ];
+
+  final AlertSummary summary;
+
+  /// The statuses the case can move to now.
+  final List<AlertStatus> next;
+  final String? shortCode;
+  final DateTime? recordedAt;
+  final String? notes;
+  final Map<String, dynamic> answers;
+  final String? patientSex;
+  final int? patientAge;
+  final String? chwPhone;
+  final List<AlertEvent> events;
+}
+
