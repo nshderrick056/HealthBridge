@@ -61,3 +61,62 @@ class _FakeSupervision extends SupervisionRepository {
       moves.add((id, status, note));
 }
 
+void main() {
+  Future<void> pump(WidgetTester tester, Widget home, List overrides) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 0.55;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [...overrides],
+        child: MaterialApp(
+          theme: buildTheme(),
+          home: Scaffold(body: home),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+  }
+
+  testWidgets('the inbox lists a case with its CHW, signs and SMS status', (
+    tester,
+  ) async {
+    await pump(tester, const InboxScreen(), [
+      supervisionRepositoryProvider.overrideWithValue(_FakeSupervision()),
+    ]);
+    expect(find.text('Patient P0412'), findsOneWidget);
+    expect(find.text('New'), findsWidgets);
+    expect(find.text('Heavy bleeding'), findsOneWidget);
+    expect(find.text('By SMS · full record not received yet'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    // Let the inbox's 10-second refresh timer run out after the screen has gone.
+    await tester.pump(const Duration(seconds: 11));
+  });
+
+  testWidgets('a case offers only the allowed next steps and saves a move', (
+    tester,
+  ) async {
+    final repo = _FakeSupervision();
+    await pump(tester, const CaseScreen(alertId: 'a1'), [
+      supervisionRepositoryProvider.overrideWithValue(repo),
+    ]);
+    expect(find.text('Uwase Marie'), findsOneWidget);
+    expect(find.text('Ask for follow-up'), findsOneWidget);
+    expect(find.text('Resolve'), findsOneWidget);
+    expect(find.text('Escalate'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'Seen at the clinic');
+    await tester.ensureVisible(find.text('Resolve'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Resolve'));
+    await tester.pump();
+    expect(repo.moves.single, (
+      'a1',
+      AlertStatus.resolved,
+      'Seen at the clinic',
+    ));
+  });
+}
