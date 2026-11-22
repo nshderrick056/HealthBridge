@@ -128,3 +128,48 @@ class PatientsScreen extends ConsumerWidget {
 }
 
 /// Avatar coloured by status, name, details, and one status word when it means something.
+class PatientRow extends StatelessWidget {
+  const PatientRow({super.key, required this.view, required this.onTap});
+
+  final PatientView view;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = view.status;
+    final (_, color, word) = StatusChip.style(status);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Row(
+          children: [
+            HbAvatar(view.patient.fullName, kind: avatarFor(status)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(view.patient.fullName, style: HbText.headingSmall),
+                  Text(
+                    view.ageSex.isEmpty ? view.patient.shortId : view.ageSex,
+                    style: HbText.bodySmall,
+                  ),
+                  Text('Last visit: ${view.when}', style: HbText.bodySmall),
+                ],
+              ),
+            ),
+            if (status != StatusKind.stable) ...[
+              const SizedBox(width: 8),
+              Text(word, style: HbText.labelMedium.copyWith(color: color)),
+            ],
+            const Icon(Icons.chevron_right, color: HbColors.chevron),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A choice among a few (filters, visit types): dark pill when chosen, white when not.
+class ChoiceChipPill extends StatelessWidget {
