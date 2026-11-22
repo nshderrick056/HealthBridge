@@ -249,3 +249,64 @@ class _UrgentCard extends StatelessWidget {
   }
 }
 
+class _DueCard extends StatelessWidget {
+  const _DueCard({required this.view, required this.onTap});
+
+  final PatientView view;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final latest = view.latest;
+    final reason = view.status == StatusKind.attention
+        ? 'Needs attention'
+        : latest == null
+        ? 'Follow-up'
+        : '${visitTypeLabel(latest.type)} follow-up';
+    return HbGradientCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            reason,
+            style: HbText.labelMedium.copyWith(
+              color: HbColors.lime,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            view.patient.fullName,
+            style: HbText.headingLarge.copyWith(
+              color: Colors.white,
+              fontSize: 24,
+            ),
+          ),
+          Text(
+            [
+              if (view.ageSex.isNotEmpty) view.ageSex,
+              view.patient.village,
+            ].join(' · '),
+            style: HbText.bodySmall.copyWith(color: HbColors.onBrand),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              HbAvatar(view.patient.fullName, kind: AvatarKind.lime, size: 36),
+              const SizedBox(width: 10),
+              Text(
+                'Due ${view.status == StatusKind.attention ? 'now' : 'today'}',
+                style: HbText.bodyMedium.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
