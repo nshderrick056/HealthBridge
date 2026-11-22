@@ -112,3 +112,60 @@ class AlertDetail {
   final List<AlertEvent> events;
 }
 
+class ChwSummary {
+  ChwSummary.fromJson(Map<String, dynamic> j)
+    : id = j['id'] as String,
+      name = j['name'] as String,
+      chwRole = j['chwRole'] as String?,
+      phone = j['phone'] as String?,
+      village = j['village'] as String?,
+      lastSyncAt = _date(j['lastSyncAt']),
+      pendingCount = (j['pendingCount'] as num?)?.toInt() ?? 0;
+
+  final String id;
+  final String name;
+  final String? chwRole;
+  final String? phone;
+  final String? village;
+  final DateTime? lastSyncAt;
+
+  /// Urgent cases that reached the centre only by SMS and still wait for the full record.
+  final int pendingCount;
+}
+
+/// A visit as the supervisor's history screens show it: what the CHW recorded.
+class HistoryVisit {
+  HistoryVisit.fromJson(Map<String, dynamic> j)
+    : id = j['id'] as String,
+      type = j['type'] as String?,
+      recordedAt = _date(j['recordedAt']),
+      isUrgent = j['isUrgent'] as bool? ?? false,
+      isPartial = j['isPartial'] as bool? ?? false,
+      dangerSigns = ((j['dangerSigns'] as List?) ?? const []).cast<String>(),
+      temperature = (j['temperature'] as num?)?.toDouble(),
+      condition = j['condition'] as String?,
+      symptoms = j['symptoms'] as String?,
+      notes = j['notes'] as String?,
+      followUpOn = _date(j['followUpOn']),
+      patientId = (j['patient'] as Map?)?['id'] as String?,
+      patientShortId = (j['patient'] as Map?)?['shortId'] as String?,
+      patientName = (j['patient'] as Map?)?['name'] as String?;
+
+  final String id;
+  final String? type;
+  final DateTime? recordedAt;
+  final bool isUrgent;
+  final bool isPartial;
+  final List<String> dangerSigns;
+  final double? temperature;
+  final String? condition;
+  final String? symptoms;
+  final String? notes;
+  final DateTime? followUpOn;
+
+  /// Only on a CHW's history, where each visit is for a different patient.
+  final String? patientId;
+  final String? patientShortId;
+  final String? patientName;
+}
+
