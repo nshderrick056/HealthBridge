@@ -196,3 +196,56 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+class _UrgentCard extends StatelessWidget {
+  const _UrgentCard({
+    required this.count,
+    required this.name,
+    required this.state,
+    required this.onTap,
+  });
+
+  final int count;
+  final String name;
+  final DispatchState? state;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final alert = switch (state) {
+      DispatchState.confirmed => 'the health centre has the alert',
+      DispatchState.sentSms ||
+      DispatchState.unconfirmed => 'alert sent by SMS, not confirmed yet',
+      DispatchState.sending => 'alert is sending',
+      null => 'alert not sent yet',
+    };
+    return HbCard(
+      color: HbColors.red,
+      shadow: false,
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  count == 1
+                      ? '1 urgent case today'
+                      : '$count urgent cases today',
+                  style: HbText.headingSmall.copyWith(color: Colors.white),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$name · $alert',
+                  style: HbText.bodySmall.copyWith(color: HbColors.onRed),
+                ),
+              ],
+            ),
+          ),
+          const Icon(Icons.chevron_right, color: Colors.white),
+        ],
+      ),
+    );
+  }
+}
+
