@@ -58,3 +58,63 @@ class _RegisterPatientScreenState extends ConsumerState<RegisterPatientScreen> {
       messenger.showSnackBar(
         const SnackBar(content: Text('Could not save the patient. Try again.')),
       );
+      return;
+    }
+    if (_editing) {
+      messenger.showSnackBar(const SnackBar(content: Text('Patient updated')));
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final choices = ref.watch(registerPatientProvider(widget.patient));
+    final controller = ref.read(
+      registerPatientProvider(widget.patient).notifier,
+    );
+    return _layout(choices, controller);
+  }
+
+  Widget _layout(
+    RegisterPatientState choices,
+    RegisterPatientController controller,
+  ) => Scaffold(
+    appBar: AppBar(
+      backgroundColor: HbColors.surface,
+      elevation: 0,
+      foregroundColor: HbColors.textPrimary,
+    ),
+    body: SafeArea(
+      child: Form(
+        key: _form,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 24),
+          children: [
+            PageHeader(
+              title: _editing ? 'Edit patient' : 'Register patient',
+              subtitle: 'Saved on this device, synced when online',
+            ),
+            const SizedBox(height: 16),
+            HbTextField(
+              label: 'Full name',
+              hint: 'Patient name',
+              controller: _name,
+              validator: _required,
+            ),
+            const SizedBox(height: 14),
+            HbTextField(
+              label: 'Village',
+              hint: 'Village',
+              controller: _village,
+              validator: _required,
+            ),
+            const SizedBox(height: 14),
+            Text('Sex', style: HbText.labelMedium),
+            const SizedBox(height: 7),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChipPill(
+                  label: 'Female',
+                  selected: choices.sex == 'F',
+                  onTap: () => controller.setSex('F'),
