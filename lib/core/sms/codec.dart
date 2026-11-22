@@ -1,11 +1,5 @@
-// Urgent-alert SMS codec (Backend Schema §3). Must stay byte-identical to server/src/sms/codec.ts;
-// shared/sms-vectors.json is checked by both test suites.
-//
-//   one part:  HB1 <device> <base64(nonce[12] | ciphertext | tag[16])>
-//   two parts: HB1 <device> 1/2 <first half of base64>   and   HB1 <device> 2/2 <second half>
-//
-// AES-256-GCM with the header "HB1 <device>" as associated data, so a body cannot be re-sent under
-// another device ID.
+// Urgent-alert SMS codec.
+
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
