@@ -36,3 +36,41 @@ export function PatientHistory({ id }: { id: string }) {
             <div className="flex items-center gap-4">
               <Avatar name={data.patient.name ?? data.patient.shortId ?? '?'} tone="lime" />
               <div>
+                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+                  {data.patient.name ?? 'Name not received yet'}
+                </h1>
+                <p className={`mt-1 text-[15px] ${urgent ? 'text-on-red' : 'text-on-brand'}`}>
+                  {[ageSex(data.patient), data.patient.village, data.patient.shortId].filter(Boolean).join(' · ')}
+                  {data.patient.archived && ' · archived by the CHW'}
+                </p>
+              </div>
+            </div>
+            {urgent && <p className="mt-4 font-semibold">The latest visit was urgent.</p>}
+          </section>
+          <section className="rounded-3xl bg-white p-5 shadow-card sm:p-6">
+            <h2 className="text-xl font-semibold tracking-tight">Community health worker</h2>
+            <p className="mt-2 text-[17px]">
+              <Link href={`/chws/${data.chw.id}`} className="font-semibold text-brand underline underline-offset-4">
+                {data.chw.name ?? 'Unknown'}
+              </Link>
+              {data.chw.phone && (
+                <>
+                  {' · '}
+                  <a href={`tel:${data.chw.phone}`} className="text-brand underline underline-offset-4">
+                    {data.chw.phone}
+                  </a>
+                </>
+              )}
+            </p>
+          </section>
+          <section aria-labelledby="visits" className="space-y-3">
+            <h2 id="visits" className="text-xl font-semibold tracking-tight">
+              Visits <span className="font-normal text-muted">{data.visits.length}</span>
+            </h2>
+            <VisitHistory visits={data.visits} />
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
