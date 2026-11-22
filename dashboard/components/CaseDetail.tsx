@@ -61,3 +61,28 @@ export function CaseDetail({ id }: { id: string }) {
     );
   }
 
+  async function act(status: Action) {
+    if (status === 'follow_up' && !followUpBy) return setActionError('Choose a follow-up date.');
+    const parts = [status === 'follow_up' ? `Follow up by ${formatDate(followUpBy)}` : '', note.trim()];
+    setBusy(true);
+    setActionError(undefined);
+    try {
+      await api(`alerts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, note: parts.filter(Boolean).join('. ') || undefined }),
+      });
+      setConfirming(null);
+      setNote('');
+      setFollowUpBy('');
+    } catch (e) {
+      setActionError(e instanceof ApiError ? (ERRORS[e.code] ?? 'Could not save. Try again.') : 'Could not save. Try again.');
+    } finally {
+      await reload();
+      setBusy(false);
+    }
+  }
+
+  const answers = describeAnswers(c.visit.answers);
+  const village = c.patient.village;
+  const open = c.status === 'new' || c.status === 'escalated';
+
