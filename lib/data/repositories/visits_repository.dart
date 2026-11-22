@@ -56,3 +56,62 @@ class VisitsRepository implements VisitRepository {
       await _db
           .into(_db.outbox)
           .insert(
+            OutboxCompanion.insert(
+              entity: 'visit',
+              entityId: id,
+              op: OutboxOp.upsert,
+              payloadJson: jsonEncode(visitPayload(visit, codes)),
+            ),
+          );
+      return visit;
+    });
+  }
+
+  /// Puts a failed visit back in the queue (the sync engine picks it up on its next run).
+  Future<void> retry(String id) => _db.transaction(() async {
+    await (_db.update(_db.visits)..where((t) => t.id.equals(id))).write(
+      const VisitsCompanion(syncState: Value(SyncState.queued)),
+    );
+    await (_db.update(
+      _db.outbox,
+    )..where((t) => t.entity.equals('visit') & t.entityId.equals(id))).write(
+      const OutboxCompanion(
+        attempts: Value(0),
+        nextTryAt: Value(null),
+        lastError: Value(null),
+      ),
+    );
+  });
+
+  @override
+  Future<Visit?> get(String id) =>
+      (_db.select(_db.visits)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Stream<List<Visit>> watchForPatient(String patientId) =>
+      (_db.select(_db.visits)
+            ..where((t) => t.patientId.equals(patientId))
+            ..orderBy([(t) => OrderingTerm.desc(t.recordedAt)]))
+          .watch();
+
+  @override
+  Future<List<String>> signCodes(String visitId) async {
+    final rows = await (_db.select(
+      _db.visitDangerSigns,
+    )..where((t) => t.visitId.equals(visitId))).get();
+    return rows.map((r) => r.code).toList()..sort();
+  }
+}
+
+/// The visit as /sync/push and POST /alerts take it.
+Map<String, Object?> visitPayload(Visit v, List<String> signCodes) => {
+  'id': v.id,
+  'short_code': v.shortCode,
+  'patient_id': v.patientId,
+  'type': v.type.name,
+  'answers': jsonDecode(v.answersJson),
+  'notes': v.notes,
+  'is_urgent': v.isUrgent,
+  'follow_up_on': v.followUpOn?.toIso8601String(),
+  'recorded_at': v.recordedAt.toUtc().toIso8601String(),
+  'danger_signs': signCodes,
+};

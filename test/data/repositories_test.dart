@@ -160,3 +160,58 @@ void main() {
         'temperature': 38.0,
         'notes': 'x',
       });
+      expect(await db.select(db.drafts).get(), hasLength(1));
+      await drafts.delete('visit.maternal');
+      expect(await drafts.load('visit.maternal'), isNull);
+    });
+  });
+
+  group('danger signs', () {
+    test('are seeded on first open and filtered by visit type', () async {
+      final repo = DangerSignsRepository(db);
+      expect((await repo.forType(VisitType.maternal)).map((s) => s.code), [
+        'CV',
+        'HB',
+        'SH',
+      ]);
+      expect(
+        await db.select(db.dangerSigns).get(),
+        hasLength(seedDangerSigns.length),
+      );
+    });
+
+    test('replaceAll swaps in the server list', () async {
+      final repo = DangerSignsRepository(db);
+      await repo.replaceAll([
+        DangerSignsCompanion.insert(
+          code: 'ZZ',
+          visitType: VisitType.child,
+          labelEn: 'Test',
+          labelRw: 'Test',
+        ),
+      ]);
+      expect((await db.select(db.dangerSigns).get()).map((s) => s.code), [
+        'ZZ',
+      ]);
+    });
+  });
+
+  group('form rules', () {
+    test('isUrgent is true for any ticked sign', () {
+      expect(isUrgent([]), isFalse);
+      expect(isUrgent(['MR']), isTrue);
+    });
+
+    test(
+      'ranges accept the edges and reject outside values with a message',
+      () {
+        expect(temperatureC.check(38.9), isNull);
+        expect(temperatureC.check(30), isNull);
+        expect(temperatureC.check(45.1), contains('30.0 to 45.0'));
+        expect(muacMm.check(null), 'Required');
+        expect(gestationalWeeks.check(0), isNotNull);
+        expect(gestationalWeeks.check(45), isNull);
+      },
+    );
+  });
+}
