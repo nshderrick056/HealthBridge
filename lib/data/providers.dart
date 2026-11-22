@@ -78,3 +78,38 @@ final authServiceProvider = Provider((ref) => AuthService());
 /// The signed-in CHW. Null while signed out.
 final sessionProvider = StateProvider<Session?>((ref) => null);
 
+/// Reachability. Slice 5 replaces this with the HEAD /health check and connectivity_plus.
+final isOnlineProvider = StateProvider<bool>((ref) => true);
+final allDispatchesProvider = StreamProvider(
+  (ref) => ref
+      .watch(databaseProvider)
+      .select(ref.watch(databaseProvider).urgentDispatch)
+      .watch(),
+);
+final dangerSignLabelsProvider = FutureProvider<Map<String, String>>((
+  ref,
+) async {
+  final db = ref.watch(databaseProvider);
+  final rows = await db.select(db.dangerSigns).get();
+  return {for (final r in rows) r.code: r.labelEn};
+});
+
+/// One visit with its patient and ticked sign codes, for the urgent and saved screens.
+final visitDetailProvider =
+    FutureProvider.family<
+      ({Visit visit, Patient patient, List<String> signs})?,
+      String
+    >((ref, id) async {
+      ref.watch(allVisitsProvider); // refresh when the visit changes
+      final visit = await ref.watch(visitsRepositoryProvider).get(id);
+      if (visit == null) return null;
+      final patient = await ref
+          .watch(patientsRepositoryProvider)
+          .get(visit.patientId);
+      if (patient == null) return null;
+      return (
+        visit: visit,
+        patient: patient,
+        signs: await ref.watch(visitsRepositoryProvider).signCodes(id),
+      );
+    });
