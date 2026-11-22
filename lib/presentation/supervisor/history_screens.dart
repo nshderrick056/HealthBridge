@@ -231,3 +231,72 @@ class ChwHistoryScreen extends ConsumerWidget {
   }
 }
 
+/// The centre's patients, latest visit first, with search (the supervisor's Patients tab).
+class SupervisorPatientsScreen extends ConsumerWidget {
+  const SupervisorPatientsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final patients = ref.watch(centrePatientsProvider);
+    return RefreshIndicator(
+      onRefresh: () => ref.refresh(centrePatientsProvider.future),
+      child: PageBody(
+        children: [
+          const PageHeader(
+            title: 'Patients',
+            subtitle: 'Everyone your CHWs follow, latest visit first',
+          ),
+          TextField(
+            onChanged: ref.read(patientSearchProvider.notifier).search,
+            style: HbText.bodyMedium.copyWith(fontSize: 17),
+            decoration: const InputDecoration(
+              hintText: 'Name, patient ID or village',
+              prefixIcon: Icon(Icons.search, size: 20, color: HbColors.muted),
+              contentPadding: EdgeInsets.symmetric(vertical: 16),
+            ),
+          ),
+          ...patients.when(
+            loading: () => [_loading()],
+            error: (e, _) => [_failed(e, 'list')],
+            data: (list) => [
+              if (list.isEmpty)
+                HbCard(
+                  child: Text(
+                    ref.read(patientSearchProvider).isEmpty
+                        ? 'No patients registered yet.'
+                        : 'No patients match.',
+                    style: HbText.bodyMedium.copyWith(color: HbColors.muted),
+                  ),
+                )
+              else
+                HbCard(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    children: [
+                      for (final (i, p) in list.indexed) ...[
+                        if (i > 0)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 18),
+                            child: HbDivider(),
+                          ),
+                        _PatientRowTile(
+                          patient: p,
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) =>
+                                  SupervisorPatientScreen(patientId: p.id),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
