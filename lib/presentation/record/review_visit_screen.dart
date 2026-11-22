@@ -73,3 +73,77 @@ class ReviewVisitScreen extends ConsumerWidget {
           ),
           if (urgent)
             HbCard(
+              color: HbColors.red,
+              shadow: false,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This visit is urgent',
+                    style: HbText.headingSmall.copyWith(color: Colors.white),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'After saving, you send the alert to the health centre.',
+                    style: HbText.bodySmall.copyWith(color: HbColors.onRed),
+                  ),
+                ],
+              ),
+            ),
+          const SectionHeading('Visit'),
+          HbCard(
+            child: Column(
+              children: [
+                DetailRow('Type', visitTypeLabel(f.type)),
+                if (urgent) ...[
+                  const SizedBox(height: 12),
+                  DetailRow(
+                    'Danger signs',
+                    [for (final c in f.signs) labels[c] ?? c].join(', '),
+                    valueColor: HbColors.red,
+                  ),
+                ],
+                if (f.temperature != null) ...[
+                  const SizedBox(height: 12),
+                  DetailRow('Temperature', '${f.temperature} °C'),
+                ],
+                const SizedBox(height: 12),
+                DetailRow('General condition', f.condition),
+              ],
+            ),
+          ),
+          if (symptoms.isNotEmpty) ...[
+            const SectionHeading('Symptoms / observations'),
+            HbCard(
+              child: Column(
+                children: [
+                  for (final s in symptoms) BulletLine(s, HbColors.brand),
+                ],
+              ),
+            ),
+          ],
+          if (f.notes.trim().isNotEmpty) ...[
+            const SectionHeading('Notes'),
+            HbCard(child: Text(f.notes.trim(), style: HbText.bodyMedium)),
+          ],
+          HbPill(
+            online
+                ? 'Online · it sends now'
+                : urgent
+                ? 'Offline · the alert can go by SMS'
+                : 'Offline · saved on this phone, sent later',
+            dot: online ? HbColors.brand : HbColors.amberMark,
+          ),
+          HbButton.primary(
+            busy ? 'Saving...' : 'Save visit',
+            onPressed: busy ? null : () => _submit(context, ref),
+          ),
+          HbButton.secondary(
+            'Edit',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ],
+      ),
+    );
+  }
+}
