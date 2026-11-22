@@ -158,3 +158,96 @@ class PatientProfileScreen extends ConsumerWidget {
                     StatusKind.urgent => 'Urgent at the last visit',
                     StatusKind.attention => 'Needs attention',
                     _ when due != null => 'Follow-up due ${fullDate(due)}',
+                    _ => 'Last visit: ${view.when}',
+                  },
+                  style: HbText.headingSmall.copyWith(
+                    color: view.status == StatusKind.urgent
+                        ? Colors.white
+                        : HbColors.lime,
+                  ),
+                ),
+                Text(
+                  latest == null
+                      ? 'No visits yet · ID ${view.patient.shortId}'
+                      : '${visitTypeLabel(latest.type)} · ID ${view.patient.shortId}',
+                  style: HbText.bodySmall.copyWith(color: HbColors.onBrand),
+                ),
+              ],
+            ),
+          ),
+          HbButton.primary(
+            'Record visit for $first',
+            icon: Icons.add,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RecordVisitScreen(patientId: patientId),
+              ),
+            ),
+          ),
+          if (shown.isNotEmpty) ...[
+            SectionHeading(
+              'Visits',
+              action: view.visits.length > 3
+                  ? (showAll ? 'Show less' : 'View all')
+                  : null,
+              onAction: toggleHistory,
+            ),
+            HbCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                children: [
+                  for (final (i, v) in shown.indexed) ...[
+                    if (i > 0)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 18),
+                        child: HbDivider(),
+                      ),
+                    InkWell(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => VisitDetailScreen(visitId: v.id),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${fullDate(v.recordedAt.toLocal())} · ${visitTypeLabel(v.type)}',
+                                    style: HbText.headingSmall,
+                                  ),
+                                ),
+                                if (v.isUrgent)
+                                  Text(
+                                    'Urgent',
+                                    style: HbText.labelMedium.copyWith(
+                                      color: HbColors.red,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            Text(
+                              v.notes?.isNotEmpty == true
+                                  ? v.notes!
+                                  : 'No notes recorded.',
+                              style: HbText.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+      bottomNavigationBar: const SubPageNav(current: 1),
+    );
+  }
+}
