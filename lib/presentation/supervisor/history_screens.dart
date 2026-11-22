@@ -164,3 +164,70 @@ class HistoryVisitCard extends StatelessWidget {
   }
 }
 
+/// A CHW of the centre and every visit they recorded.
+class ChwHistoryScreen extends ConsumerWidget {
+  const ChwHistoryScreen({super.key, required this.chwId});
+
+  final String chwId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(chwHistoryProvider(chwId));
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => ref.refresh(chwHistoryProvider(chwId).future),
+        child: PageBody(
+          children: [
+            _backRow(context),
+            ...history.when(
+              loading: () => [_loading()],
+              error: (e, _) => [_failed(e, 'CHW')],
+              data: (h) => [
+                Row(
+                  children: [
+                    HbAvatar(h.chw.name, kind: AvatarKind.lime, size: 56),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(h.chw.name, style: HbText.headingLarge),
+                          Text(
+                            [
+                              if (h.chw.chwRole != null)
+                                h.chw.chwRole!.toUpperCase(),
+                              ?h.chw.village,
+                              ?h.chw.phone,
+                            ].join(' · '),
+                            style: HbText.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                SectionHeading('Visits (${h.visits.length})'),
+                if (h.visits.isEmpty)
+                  Text('No visits recorded yet.', style: HbText.bodySmall),
+                for (final v in h.visits)
+                  HistoryVisitCard(
+                    visit: v,
+                    onPatient: v.patientId == null
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => SupervisorPatientScreen(
+                                patientId: v.patientId!,
+                              ),
+                            ),
+                          ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
