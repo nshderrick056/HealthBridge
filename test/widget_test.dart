@@ -27,6 +27,62 @@ void main() {
     expect(find.text('0'), findsNothing);
     expect(find.text('1'), findsOneWidget);
   });
+
+  testWidgets(
+    'an unconfirmed SMS alert offers Resend and Call, and the store build can confirm it by hand',
+    (tester) async {
+      await seedUrgent('sms_composer', DispatchState.unconfirmed);
+      phoneScreen(tester);
+      await tester.pumpWidget(
+        _app(db, const SmsAlertSentScreen(visitId: 'v1')),
+      );
+      await settle(tester);
+
+      expect(find.text('SMS alert sent'), findsOneWidget);
+      expect(find.text('No confirmation yet'), findsOneWidget);
+      expect(find.text('Resend SMS'), findsOneWidget);
+      expect(find.text('Call health centre'), findsOneWidget);
+
+      await tester.ensureVisible(find.text('I got the confirmation'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('I got the confirmation'));
+      await settle(tester);
+
+      expect(find.text('Alert received by the health centre'), findsOneWidget);
+      expect(find.text('Resend SMS'), findsNothing);
+      expect(find.text('I got the confirmation'), findsNothing);
+      final d = (await tester.runAsync(
+        () => db.select(db.urgentDispatch).getSingle(),
+      ))!;
+      expect(d.state, DispatchState.confirmed);
+      await finish(tester);
+    },
+  );
+
+  Future<void> seedPatient() => db
+      .into(db.patients)
+      .insert(
+        PatientsCompanion.insert(
+          id: 'p1',
+          shortId: 'P000001',
+          fullName: 'Uwase Marie',
+          village: 'Nyamata',
+          sex: const Value('F'),
+          ageEstimate: const Value(32),
+          consentAt: DateTime.now(),
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        ),
+      );
+
+  Future<void> openProfile(WidgetTester tester) async {
+    await pumpShell(tester);
+    await tester.tap(find.text('Patients').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Uwase Marie'));
+    await tester.pumpAndSettle();
+  }
+
 }
 
   testWidgets(
