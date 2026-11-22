@@ -57,3 +57,61 @@ class PatientsRepository implements PatientRepository {
       await _db.update(_db.patients).replace(next);
       await _enqueue(next);
       return next;
+    });
+  }
+
+  /// The app's "delete": hides the patient everywhere but keeps the record, and syncs like an edit.
+  @override
+  Future<Patient> archive(Patient p) =>
+      update(p.copyWith(archivedAt: Value(_now())));
+
+  /// Undoes [archive].
+  @override
+  Future<Patient> restore(Patient p) =>
+      update(p.copyWith(archivedAt: const Value(null)));
+
+  @override
+  Future<Patient?> get(String id) => (_db.select(
+    _db.patients,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  /// Live list for the patients tab; [query] matches name, short ID or village. Archived patients are left out.
+  Stream<List<Patient>> watch({String query = ''}) {
+    final q = '%${query.trim()}%';
+    return (_db.select(_db.patients)
+          ..where(
+            (t) =>
+                t.archivedAt.isNull() &
+                (t.fullName.like(q) | t.shortId.like(q) | t.village.like(q)),
+          )
+          ..orderBy([(t) => OrderingTerm.asc(t.fullName)]))
+        .watch();
+  }
+
+  Future<void> _enqueue(Patient p) => _db
+      .into(_db.outbox)
+      .insert(
+        OutboxCompanion.insert(
+          entity: 'patient',
+          entityId: p.id,
+          op: OutboxOp.upsert,
+          payloadJson: jsonEncode(patientPayload(p)),
+        ),
+      );
+}
+
+/// The patient as /sync/push and POST /alerts take it.
+Map<String, Object?> patientPayload(Patient p) => {
+  'id': p.id,
+  'short_id': p.shortId,
+  'full_name': p.fullName,
+  'sex': p.sex,
+  'birth_date': p.birthDate?.toIso8601String(),
+  'age_estimate': p.ageEstimate,
+  'village': p.village,
+  'phone': p.phone,
+  'consent_at': p.consentAt.toUtc().toIso8601String(),
+  'created_at': p.createdAt.toUtc().toIso8601String(),
+  'updated_at': p.updatedAt.toUtc().toIso8601String(),
+  'archived_at': p.archivedAt?.toUtc().toIso8601String(),
+};

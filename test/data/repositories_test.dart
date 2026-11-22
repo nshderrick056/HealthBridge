@@ -62,3 +62,47 @@ void main() {
       expect(
         next.updatedAt.isAtSameMomentAs(clock.add(const Duration(hours: 1))),
         isTrue,
+      );
+      expect((await later.get(p.id))!.village, 'Other Village');
+      expect(await db.select(db.outbox).get(), hasLength(2));
+    });
+
+    test('watch filters by name, short ID and village', () async {
+      final p = await newPatient();
+      await patients.create(fullName: 'Someone Else', village: 'Far Hill');
+      expect(
+        (await patients.watch(query: 'far').first).map((x) => x.fullName),
+        ['Someone Else'],
+      );
+      expect((await patients.watch(query: p.shortId).first).map((x) => x.id), [
+        p.id,
+      ]);
+      expect(await patients.watch().first, hasLength(2));
+    });
+  });
+
+  group('visits', () {
+    test(
+      'an urgent visit gets its short code, signs and one outbox row',
+      () async {
+        final p = await newPatient();
+        final v = await visits.record(
+          patientId: p.id,
+          type: VisitType.maternal,
+          answers: {'temperature': 38.9, 'gestational_weeks': 32},
+          signCodes: ['HB', 'CV', 'HB'],
+        );
+        expect(v.isUrgent, isTrue);
+        expect(v.shortCode, v.id.substring(0, 8));
+        expect(v.syncState, SyncState.queued);
+        expect(await visits.signCodes(v.id), ['CV', 'HB']);
+
+        final box = await (db.select(
+          db.outbox,
+        )..where((t) => t.entity.equals('visit'))).get();
+        expect(box, hasLength(1));
+        final payload =
+            jsonDecode(box.single.payloadJson) as Map<String, dynamic>;
+        expect(payload['danger_signs'], ['CV', 'HB']);
+        expect(payload['answers'], containsPair('temperature', 38.9));
+        expect(payload['recorded_at'], '2026-10-06T19:14:00.000Z');
