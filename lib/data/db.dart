@@ -30,3 +30,30 @@ class Patients extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class Visits extends Table {
+  TextColumn get id => text()();
+  TextColumn get shortCode => text()(); // first 8 hex of id, used in SMS
+  TextColumn get patientId => text().references(Patients, #id)();
+  TextColumn get type => textEnum<VisitType>()();
+  TextColumn get answersJson => text().withDefault(const Constant('{}'))();
+  TextColumn get notes => text().nullable()();
+  BoolColumn get isUrgent => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get followUpOn => dateTime().nullable()();
+  DateTimeColumn get recordedAt => dateTime()();
+  TextColumn get syncState =>
+      textEnum<SyncState>().withDefault(Constant(SyncState.local.name))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class VisitDangerSigns extends Table {
+  TextColumn get visitId => text().references(Visits, #id)();
+  TextColumn get code => text()();
+
+  @override
+  Set<Column> get primaryKey => {visitId, code};
+}
+
+/// Ordered upload queue: one row per local change, drained oldest first by the sync engine.
+
