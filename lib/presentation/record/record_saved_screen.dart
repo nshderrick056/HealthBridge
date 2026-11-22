@@ -43,3 +43,53 @@ class RecordSavedScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               const HbPill(
                 'Saved on this phone',
+                icon: Icons.check,
+                foreground: HbColors.brand,
+              ),
+            ],
+          ),
+          HbCard(
+            child: Column(
+              children: [
+                DetailRow(
+                  'Sent to the server',
+                  synced
+                      ? 'Yes'
+                      : (online ? 'Sending now' : 'Not yet, no signal'),
+                  valueColor: synced ? HbColors.brand : HbColors.warning,
+                ),
+                const SizedBox(height: 12),
+                DetailRow('Patient ID', detail.patient.shortId),
+                const SizedBox(height: 12),
+                DetailRow('Village', detail.patient.village),
+                const SizedBox(height: 12),
+                DetailRow(
+                  'Recorded',
+                  '${fullDate(recorded)} · ${clock(recorded)}',
+                ),
+              ],
+            ),
+          ),
+          Text(
+            'It sends by itself when the phone has signal. You can keep working; '
+            'nothing is lost if the phone turns off.',
+            style: HbText.bodyMedium.copyWith(color: HbColors.muted),
+          ),
+          HbButton.primary(
+            'Back to home',
+            onPressed: () {
+              ref.read(tabIndexProvider.notifier).state = 0;
+              Navigator.of(context).popUntil((r) => r.isFirst);
+            },
+          ),
+          HbButton.secondary(
+            'View pending records',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SyncStatusScreen()),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
