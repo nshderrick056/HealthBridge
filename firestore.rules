@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// HealthBridge Firestore security rules. Roles come from Firebase Auth custom claims that only the
+// server (Admin SDK) can set when an admin creates the account:
+//   role: 'chw' | 'supervisor' | 'admin'      hc: the user's health centre ID
+// The server's Admin SDK bypasses these rules; everything an app does is checked here.
+// See docs/ERD.md for the collections and fields.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function role() { return request.auth.token.role; }
+    function hc() { return request.auth.token.hc; }
+    function isChw() { return signedIn() && role() == 'chw'; }
+    function isSupervisor() { return signedIn() && role() == 'supervisor'; }
+    function isAdmin() { return signedIn() && role() == 'admin'; }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    // A field that must not change on update.
+    function same(field) { return incoming().get(field, null) == existing().get(field, null); }
+    function optString(field, max) {
+      return !(field in incoming()) || incoming()[field] == null
+        || (incoming()[field] is string && incoming()[field].size() <= max);
+    }
+
+    // ---- Reference data: read by any signed-in user, written only by the server ----
+
+    match /healthCenters/{id} {
+      allow read: if isAdmin() || (signedIn() && hc() == id);
+      allow write: if false;
+    }
+
+    match /dangerSigns/{code} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    // Profiles hold no secrets (PIN hashes live in the server-only `credentials` collection).
