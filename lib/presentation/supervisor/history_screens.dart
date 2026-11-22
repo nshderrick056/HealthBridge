@@ -300,3 +300,60 @@ class SupervisorPatientsScreen extends ConsumerWidget {
   }
 }
 
+class _PatientRowTile extends StatelessWidget {
+  const _PatientRowTile({required this.patient, required this.onTap});
+
+  final PatientRow patient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = patient;
+    final name = p.name ?? 'Name not received yet';
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Row(
+          children: [
+            HbAvatar(
+              p.name ?? p.shortId ?? '?',
+              kind: p.lastVisitUrgent ? AvatarKind.urgent : AvatarKind.plain,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: HbText.headingSmall),
+                  Text(
+                    [?p.ageSex, ?p.village, ?p.shortId].join(' · '),
+                    style: HbText.bodySmall,
+                  ),
+                  Text(
+                    [
+                      if (p.chwName != null) 'CHW ${p.chwName}',
+                      p.lastVisitAt == null
+                          ? 'No visits'
+                          : 'Last visit ${relativeDay(p.lastVisitAt!)}',
+                    ].join(' · '),
+                    style: HbText.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            if (p.lastVisitUrgent) ...[
+              const SizedBox(width: 8),
+              Text(
+                'Urgent',
+                style: HbText.labelMedium.copyWith(color: HbColors.red),
+              ),
+            ],
+            const Icon(Icons.chevron_right, color: HbColors.chevron),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
