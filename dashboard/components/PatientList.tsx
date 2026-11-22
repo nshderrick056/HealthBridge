@@ -42,3 +42,47 @@ export function PatientList() {
       {error && !data && (
         <p role="alert" className="rounded-2xl bg-red-tint px-4 py-3 text-[15px] text-red">
           Could not load the patients. Trying again shortly.
+        </p>
+      )}
+      {!data && !error && <p className="text-muted">Loading…</p>}
+      {data && data.patients.length === 0 && (
+        <p className="rounded-3xl bg-white px-6 py-10 text-center text-muted shadow-card">
+          {q ? 'No patients match.' : 'No patients registered yet.'}
+        </p>
+      )}
+      {data && data.patients.length > 0 && (
+        <ul className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
+          {data.patients.map((p) => (
+            <li key={p.id}>
+              <Link href={`/patients/${p.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-canvas sm:px-6">
+                <Avatar name={p.name ?? p.shortId ?? '?'} tone={p.lastVisitUrgent ? 'urgent' : 'plain'} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[17px] font-semibold">
+                    {p.name ?? 'Name not received yet'}
+                    <span className="ml-2 text-[15px] font-normal text-muted">{p.shortId}</span>
+                  </p>
+                  <p className="text-[15px] text-muted">
+                    {[ageSex(p), p.village, p.chw.name && `CHW ${p.chw.name}`].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="hidden text-right text-[15px] sm:block">
+                  {p.lastVisitAt ? (
+                    <time dateTime={p.lastVisitAt} title={formatDateTime(p.lastVisitAt)} className="text-muted">
+                      {timeAgo(p.lastVisitAt)}
+                    </time>
+                  ) : (
+                    <span className="text-muted">No visits</span>
+                  )}
+                  {p.lastVisitUrgent && <p className="font-semibold text-red">Urgent</p>}
+                </div>
+                <span className="text-chevron" aria-hidden>
+                  <ChevronIcon />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
