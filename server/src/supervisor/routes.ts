@@ -331,3 +331,63 @@ export function supervisorRouter(fb: Fb, sender: SmsSender) {
 
   const patientsQuery = z.object({ q: z.string().trim().max(100).optional() });
 
+  /** The centre's patients (not archived), with their CHW and latest visit; `q` searches name, ID and village. */
+  router.get('/patients', ...guard, async (req, res) => {
+    const { hc } = centreOf(res);
+    const q = patientsQuery.parse(req.query).q?.toLowerCase();
+    const [patientsSnap, visitsSnap, chwsSnap] = await Promise.all([
+      fs.collection('patients').where('healthCenterId', '==', hc).get(),
+      // shortcut: every visit of the centre for "last visit"; keep a lastVisitAt on the patient when this grows.
+      fs.collection('visits').where('healthCenterId', '==', hc).select('patientId', 'recordedAt', 'isUrgent').get(),
+      fs.collection('users').where('healthCenterId', '==', hc).where('role', '==', 'chw').get(),
+    ]);
+    const chwNames = new Map(chwsSnap.docs.map((d) => [d.id, d.data().fullName as string]));
+    const latest = new Map<string, { at: number; urgent: boolean; count: number }>();
+    for (const d of visitsSnap.docs) {
+      const v = d.data();
+      const at = (v.recordedAt as Timestamp | undefined)?.toMillis() ?? 0;
+      const cur = latest.get(v.patientId);
+      latest.set(v.patientId, {
+        at: Math.max(at, cur?.at ?? 0),
+        urgent: !cur || at >= cur.at ? !!v.isUrgent : cur.urgent,
+        count: (cur?.count ?? 0) + 1,
+      });
+    }
+    const patients = patientsSnap.docs
+      .filter((d) => !d.data().archivedAt)
+      .map((d) => {
+        const p = d.data();
+        const l = latest.get(d.id);
+        return {
+          ...patientJson(d.id, p),
+          chw: { id: p.chwId, name: chwNames.get(p.chwId) ?? null },
+          lastVisitAt: l ? new Date(l.at).toISOString() : null,
+          lastVisitUrgent: l?.urgent ?? false,
+          visitCount: l?.count ?? 0,
+        };
+      })
+      .filter((p) => !q || [p.name, p.shortId, p.village].some((s) => s?.toLowerCase().includes(q)))
+      .sort((a, b) => (b.lastVisitAt ?? '').localeCompare(a.lastVisitAt ?? '') || (a.name ?? '').localeCompare(b.name ?? ''));
+    res.json({ patients });
+  });
+
+  /** One patient of the centre with every visit, newest first. No patient phone number (minimum necessary). */
+  router.get('/patients/:id', ...guard, async (req, res) => {
+    const { hc } = centreOf(res);
+    const id = idParam.parse(req.params.id);
+    const p = (await fs.collection('patients').doc(id).get()).data();
+    if (!p || p.healthCenterId !== hc) throw new HttpError(404, 'not_found');
+    const [docs, chw] = await Promise.all([
+      centreVisits(hc, 'patientId', id),
+      fs.collection('users').doc(p.chwId).get(),
+    ]);
+    const labels = await signLabels(docs.map((d) => d.data()));
+    res.json({
+      patient: { ...patientJson(id, p), archived: !!p.archivedAt },
+      chw: { id: p.chwId, name: (chw.data()?.fullName as string) ?? null, phone: (chw.data()?.phone as string) ?? null },
+      visits: docs.map((d) => visitJson(d.id, d.data(), labels)),
+    });
+  });
+
+  return router;
+}
