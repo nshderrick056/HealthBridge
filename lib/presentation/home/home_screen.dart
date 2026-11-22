@@ -310,3 +310,49 @@ class _DueCard extends StatelessWidget {
   }
 }
 
+class _VisitRow extends StatelessWidget {
+  const _VisitRow({
+    required this.visit,
+    required this.patient,
+    required this.onTap,
+  });
+
+  final Visit visit;
+  final Patient? patient;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = patient?.fullName ?? 'Unknown patient';
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+        child: Row(
+          children: [
+            HbAvatar(
+              name,
+              kind: visit.isUrgent ? AvatarKind.urgent : AvatarKind.plain,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: HbText.headingSmall),
+                  Text(
+                    [visitTypeLabel(visit.type), ?patient?.village].join(' · '),
+                    style: HbText.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(clock(visit.recordedAt.toLocal()), style: HbText.bodySmall),
+            const Icon(Icons.chevron_right, color: HbColors.chevron),
+          ],
+        ),
+      ),
+    );
+  }
+}
