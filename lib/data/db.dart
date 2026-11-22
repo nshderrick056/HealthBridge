@@ -57,3 +57,77 @@ class VisitDangerSigns extends Table {
 
 /// Ordered upload queue: one row per local change, drained oldest first by the sync engine.
 
+class Drafts extends Table {
+  TextColumn get id => text()();
+  TextColumn get screen => text()();
+  TextColumn get dataJson => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class SyncMeta extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
+}
+
+class DangerSigns extends Table {
+  TextColumn get code => text()();
+  TextColumn get visitType => textEnum<VisitType>()();
+  TextColumn get labelEn => text()();
+  TextColumn get labelRw => text()();
+
+  @override
+  Set<Column> get primaryKey => {code};
+}
+
+@DriftDatabase(
+  tables: [
+    Patients,
+    Visits,
+    VisitDangerSigns,
+    Outbox,
+    UrgentDispatch,
+    Drafts,
+    SyncMeta,
+    DangerSigns,
+  ],
+)
+class AppDatabase extends _$AppDatabase {
+  AppDatabase(super.e);
+
+  @override
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await batch(
+        (b) => b.insertAll(dangerSigns, [
+          for (final s in seedDangerSigns)
+            DangerSignsCompanion.insert(
+              code: s.code,
+              visitType: s.type,
+              labelEn: s.labelEn,
+              labelRw: s.labelRw,
+            ),
+        ]),
+      );
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.addColumn(patients, patients.archivedAt);
+    },
+    beforeOpen: (details) => customStatement('PRAGMA foreign_keys = ON'),
+  );
+}
+
+/// Opens the platform database.
+Future<AppDatabase> openAppDatabase() async {
+  return AppDatabase(await openDatabaseExecutor());
+}
+
