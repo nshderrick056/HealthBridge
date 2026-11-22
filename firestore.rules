@@ -78,3 +78,43 @@ service cloud.firestore {
         || (isSupervisor() && existing().healthCenterId == hc());
       allow create: if isChw() && validPatient()
         && incoming().chwId == uid() && incoming().healthCenterId == hc();
+      // Edits and archiving; owner, centre, short ID and creation time never change.
+      allow update: if isChw() && existing().chwId == uid() && validPatient()
+        && same('chwId') && same('healthCenterId') && same('shortId') && same('createdAt');
+      allow delete: if false; // archive instead (archivedAt); health records are kept
+    }
+
+    // ---- Visits: recorded by the CHW, read by their supervisor ----
+
+    function validVisit(visitId) {
+      let v = incoming();
+      return v.keys().hasOnly([
+          'shortCode', 'patientId', 'chwId', 'healthCenterId', 'deviceId', 'type', 'answers',
+          'notes', 'isUrgent', 'dangerSigns', 'followUpOn', 'recordedAt', 'receivedAt', 'source',
+          'isPartial'])
+        && v.shortCode is string && v.shortCode == visitId[0:8]
+        && v.type in ['maternal', 'child', 'malaria', 'nutrition']
+        && v.answers is map
+        && optString('notes', 5000)
+        && v.dangerSigns is list && v.dangerSigns.size() <= 30
+        // Urgent exactly when a danger sign is ticked, so the app cannot get the two out of step.
+        && v.isUrgent == (v.dangerSigns.size() > 0)
+        && v.recordedAt is timestamp
+        && v.source == 'app' && v.isPartial == false
+        // The patient must be this CHW's own.
+        && getAfter(/databases/$(database)/documents/patients/$(v.patientId)).data.chwId == uid();
+    }
+
+    match /visits/{visitId} {
+      allow read: if (isChw() && existing().chwId == uid())
+        || (isSupervisor() && existing().healthCenterId == hc());
+      allow create: if isChw() && validVisit(visitId)
+        && incoming().chwId == uid() && incoming().healthCenterId == hc();
+      // The CHW owns the content; owner, centre and patient never change.
+      allow update: if isChw() && existing().chwId == uid() && validVisit(visitId)
+        && same('chwId') && same('healthCenterId') && same('patientId') && same('shortCode');
+      allow delete: if false;
+    }
+
+    // ---- Alerts: one per urgent visit (document ID = visit ID) ----
+    // The phone raises the internet alert itself; status changes go through the server, which
