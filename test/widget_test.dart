@@ -138,3 +138,31 @@ void main() {
         );
   }
 
+  testWidgets('archiving asks first, hides the patient and can be undone', (
+    tester,
+  ) async {
+    await seedPatient();
+    await openProfile(tester);
+
+    await tester.tap(find.byTooltip('Archive patient'));
+    await tester.pumpAndSettle();
+    expect(find.text('Archive this patient?'), findsOneWidget);
+    await tester.tap(find.text('Archive'));
+    await settle(tester);
+
+    expect(find.text('Uwase Marie archived'), findsOneWidget);
+    expect(
+      find.text('No patients yet. Register your first patient.'),
+      findsOneWidget,
+    );
+    var p = (await tester.runAsync(() => db.select(db.patients).getSingle()))!;
+    expect(p.archivedAt, isNotNull); // kept, not deleted
+
+    await tester.tap(find.text('Undo'));
+    await settle(tester);
+    p = (await tester.runAsync(() => db.select(db.patients).getSingle()))!;
+    expect(p.archivedAt, isNull);
+    expect(find.text('Uwase Marie'), findsOneWidget);
+    await finish(tester);
+  });
+
