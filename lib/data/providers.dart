@@ -56,3 +56,25 @@ final savePatientProvider = Provider(
 );
 final archivePatientProvider = Provider(
   (ref) => ArchivePatient(ref.watch(patientsRepositoryProvider)),
+);
+final recordVisitUseCaseProvider = Provider(
+  (ref) => RecordVisit(ref.watch(visitsRepositoryProvider)),
+);
+
+/// Live tables for the list screens and summaries. Archived patients are left out everywhere.
+final allPatientsProvider = StreamProvider((ref) {
+  final db = ref.watch(databaseProvider);
+  return (db.select(db.patients)..where((t) => t.archivedAt.isNull())).watch();
+});
+final allVisitsProvider = StreamProvider(
+  (ref) => ref
+      .watch(databaseProvider)
+      .select(ref.watch(databaseProvider).visits)
+      .watch(),
+);
+
+final authServiceProvider = Provider((ref) => AuthService());
+
+/// The signed-in CHW. Null while signed out.
+final sessionProvider = StateProvider<Session?>((ref) => null);
+
