@@ -33,3 +33,36 @@ class RegisterPatientController extends Notifier<RegisterPatientState> {
 
   /// Saves on the phone (with its outbox row) and starts an upload if online.
   Future<void> save({
+    required String fullName,
+    required String village,
+    required String age,
+    required String phone,
+  }) async {
+    await ref
+        .read(savePatientProvider)
+        .call(
+          editing: editing,
+          fullName: fullName,
+          village: village,
+          sex: state.sex,
+          age: age,
+          phone: phone,
+        );
+    unawaited(ref.read(syncNowProvider)());
+  }
+}
+
+final registerPatientProvider = NotifierProvider.autoDispose
+    .family<RegisterPatientController, RegisterPatientState, Patient?>(
+      RegisterPatientController.new,
+    );
+
+/// Age is optional; when given it must be whole years, 0 to 130 (the server's limit).
+String? validateAge(String? v) {
+  final text = v?.trim() ?? '';
+  if (text.isEmpty) return null;
+  final n = int.tryParse(text);
+  return n == null || n < 0 || n > 130
+      ? 'Enter the age in whole years (0 to 130)'
+      : null;
+}
