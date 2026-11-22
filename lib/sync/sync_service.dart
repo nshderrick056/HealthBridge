@@ -27,9 +27,8 @@ final syncNowProvider = Provider<Future<void> Function()>(
   },
 );
 
-/// Runs sync while the CHW is signed in: on start, on resume, when connectivity changes, and every
-/// minute (the outbox back-off decides what is actually due). With the app closed,
-/// [scheduleBackgroundSync] takes over.
+/// Runs sync while the CHW is signed in: on start, on resume, when connectivity changes, and every minute
+
 class SyncTriggers extends ConsumerStatefulWidget {
   const SyncTriggers({super.key, required this.child});
 
