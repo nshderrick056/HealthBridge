@@ -21,3 +21,178 @@ const _weekdays = [
   'Sunday',
 ];
 
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider);
+    final online = ref.watch(isOnlineProvider);
+    final patients = ref.watch(allPatientsProvider).value ?? const [];
+    final visits = ref.watch(allVisitsProvider).value ?? const [];
+    final dispatches = ref.watch(allDispatchesProvider).value ?? const [];
+    final views = buildPatientViews(patients, visits);
+    final now = DateTime.now();
+    final today =
+        visits.where((v) => sameDay(v.recordedAt.toLocal(), now)).toList()
+          ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt));
+    final visited = today.map((v) => v.patientId).toSet().length;
+    final due = views
+        .where(
+          (v) =>
+              v.status == StatusKind.followUp ||
+              v.status == StatusKind.attention,
+        )
+        .toList();
+    final urgent = today.where((v) => v.isUrgent).toList();
+    final pending = syncCounts(patients, visits).pending;
+    Patient? patientOf(String id) =>
+        patients.where((p) => p.id == id).firstOrNull;
+    void openPatient(String id) => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PatientProfileScreen(patientId: id),
+      ),
+    );
+
+    return PageBody(
+      children: [
+        ProfileHeader(
+          name: session?.fullName ?? '',
+          role: 'Community Health Worker',
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Today', style: HbText.headingLarge),
+            const SizedBox(height: 4),
+            Text(
+              '${_weekdays[now.weekday - 1]} ${dayMonth(now)} · '
+              '$visited visited, ${due.length} due',
+              style: HbText.bodySmall,
+            ),
+            const SizedBox(height: 10),
+            Material(
+              type: MaterialType.transparency,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const SyncStatusScreen(),
+                  ),
+                ),
+                child: HbPill(
+                  _connection(online, pending),
+                  dot: online ? HbColors.brand : HbColors.amberMark,
+                ),
+              ),
+            ),
+          ],
+        ),
+        SummaryRow(
+          children: [
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.check,
+                tint: HbColors.greenTint,
+                color: HbColors.brand,
+                value: visited,
+                label: 'Visited today',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.event,
+                tint: HbColors.amberTint,
+                color: HbColors.warning,
+                value: due.length,
+                label: 'Due for a visit',
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: SummaryCard(
+                icon: Icons.warning_amber_rounded,
+                tint: HbColors.redTint,
+                color: HbColors.red,
+                value: urgent.length,
+                label: 'Urgent today',
+              ),
+            ),
+          ],
+        ),
+        if (urgent.isNotEmpty)
+          _UrgentCard(
+            count: urgent.length,
+            name: patientOf(urgent.first.patientId)?.fullName ?? 'A patient',
+            state: dispatches
+                .where((d) => d.visitId == urgent.first.id)
+                .firstOrNull
+                ?.state,
+            onTap: () => ref.read(tabIndexProvider.notifier).state = 3,
+          ),
+        SectionHeading(
+          'Due today',
+          action: 'View all',
+          onAction: () => ref.read(tabIndexProvider.notifier).state = 1,
+        ),
+        if (due.isEmpty)
+          Text('Nobody is due for a visit.', style: HbText.bodySmall)
+        else
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final (i, v) in due.indexed) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  SizedBox(
+                    width: 264,
+                    child: _DueCard(
+                      view: v,
+                      onTap: () => openPatient(v.patient.id),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        const SectionHeading('Visited today'),
+        if (today.isEmpty)
+          Text('No visits recorded yet.', style: HbText.bodySmall)
+        else
+          HbCard(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              children: [
+                for (final (i, visit) in today.indexed) ...[
+                  if (i > 0)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18),
+                      child: HbDivider(),
+                    ),
+                  _VisitRow(
+                    visit: visit,
+                    patient: patientOf(visit.patientId),
+                    onTap: () => openPatient(visit.patientId),
+                  ),
+                ],
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  static String _connection(bool online, int pending) {
+    final waiting = pending == 1 ? '1 visit' : '$pending visits';
+    if (online) {
+      return pending == 0 ? 'Online · all sent' : 'Online · sending $waiting';
+    }
+    return pending == 0
+        ? 'Offline · nothing waiting'
+        : 'Offline · $waiting not sent yet';
+  }
+}
+
