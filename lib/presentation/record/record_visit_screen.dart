@@ -78,3 +78,63 @@ class _RecordVisitScreenState extends ConsumerState<RecordVisitScreen> {
         WidgetsBinding.instance.addPostFrameCallback((_) => _open(p.first));
       }
     }
+    final form = state.form;
+
+    return Scaffold(
+      bottomNavigationBar: const SubPageNav(current: 2),
+      body: form == null
+          ? _picker(patients, visits)
+          : _formBody(form, state.signs, visits),
+    );
+  }
+
+  // Same status as every other screen, from the patient's own visits.
+  PatientView _view(Patient p, List<Visit> visits) =>
+      PatientView(p, visits.where((v) => v.patientId == p.id).toList());
+
+  Widget _picker(List<Patient> patients, List<Visit> visits) {
+    final views = [for (final p in patients) _view(p, visits)];
+    bool isDue(PatientView v) =>
+        v.status == StatusKind.followUp || v.status == StatusKind.attention;
+    final due = views.where(isDue).toList();
+    final others = views.where((v) => !isDue(v)).toList();
+    Widget card(List<PatientView> list) => HbCard(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        children: [
+          for (final (i, v) in list.indexed) ...[
+            if (i > 0)
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 18),
+                child: HbDivider(),
+              ),
+            PatientRow(view: v, onTap: () => _open(v.patient)),
+          ],
+        ],
+      ),
+    );
+    return PageBody(
+      children: [
+        const HbStepBar(step: 'Step 1 / 3'),
+        Text('Who is this visit for?', style: HbText.headingLarge),
+        if (patients.isEmpty)
+          Text('Register a patient first.', style: HbText.bodySmall),
+        if (due.isNotEmpty) ...[const SectionHeading('Due today'), card(due)],
+        if (others.isNotEmpty) ...[
+          SectionHeading(due.isEmpty ? 'Your patients' : 'Everyone else'),
+          card(others),
+        ],
+      ],
+    );
+  }
+
+  Widget _formBody(VisitForm f, List<DangerSign> signs, List<Visit> visits) {
+    final view = _view(f.patient, visits);
+    return Form(
+      key: _key,
+      onChanged: _save,
+      child: PageBody(
+        children: [
+          const HbStepBar(step: 'Step 2 / 3'),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
