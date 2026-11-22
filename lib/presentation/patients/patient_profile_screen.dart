@@ -78,3 +78,83 @@ class PatientProfileScreen extends ConsumerWidget {
     final view = PatientView(
       found.first,
       visits.where((v) => v.patientId == patientId).toList(),
+    );
+    final latest = view.latest;
+    final shown = view.visits.take(showAll ? 50 : 3).toList();
+    final due = latest?.followUpOn;
+    final first = view.patient.fullName.trim().split(RegExp(r'\s+')).first;
+
+    return Scaffold(
+      body: PageBody(
+        children: [
+          Row(
+            children: [
+              HbCircleButton(
+                icon: Icons.chevron_left,
+                tooltip: 'Back',
+                onPressed: () => Navigator.of(context).maybePop(),
+              ),
+              const Spacer(),
+              HbCircleButton(
+                icon: Icons.edit_outlined,
+                tooltip: 'Edit patient',
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        RegisterPatientScreen(patient: view.patient),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              HbCircleButton(
+                icon: Icons.archive_outlined,
+                tooltip: 'Archive patient',
+                onPressed: () => _archive(context, ref, view.patient),
+              ),
+            ],
+          ),
+          HbGradientCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    HbAvatar(
+                      view.patient.fullName,
+                      kind: AvatarKind.lime,
+                      size: 56,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            view.patient.fullName,
+                            style: HbText.headingLarge.copyWith(
+                              color: Colors.white,
+                              fontSize: 24,
+                            ),
+                          ),
+                          Text(
+                            [
+                              if (view.ageSex.isNotEmpty) view.ageSex,
+                              view.patient.village,
+                            ].join(' · '),
+                            style: HbText.bodySmall.copyWith(
+                              color: HbColors.onBrand,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                const Divider(height: 1, color: Color(0x33FFFFFF)),
+                const SizedBox(height: 12),
+                Text(
+                  switch (view.status) {
+                    StatusKind.urgent => 'Urgent at the last visit',
+                    StatusKind.attention => 'Needs attention',
+                    _ when due != null => 'Follow-up due ${fullDate(due)}',
