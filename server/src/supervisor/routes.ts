@@ -191,3 +191,35 @@ export function supervisorRouter(fb: Fb, sender: SmsSender) {
     });
   });
 
+  router.patch('/alerts/:id', ...guard, async (req, res) => {
+    const { uid, hc } = centreOf(res);
+    const ref = (await ownAlert(req.params.id, hc)).ref;
+    const { status, note } = patchBody.parse(req.body);
+
+    const eventRef = ref.collection('events').doc();
+    const from = await fs.runTransaction(async (tx) => {
+      // Re-read inside the transaction: if another supervisor got there first, the transition is re-checked.
+      const current = (await tx.get(ref)).data()!.status as Status;
+      if (!TRANSITIONS[current].includes(status)) throw new HttpError(409, 'invalid_transition');
+      tx.update(ref, { status });
+      tx.create(eventRef, {
+        actorId: uid,
+        fromStatus: current,
+        toStatus: status,
+        note: note || null,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return current;
+    });
+    await audit(fb, uid, `alert.${status}`, 'alerts', ref.id);
+    await notifyChw(ref.id, status);
+    const event = (await eventRef.get()).data()!;
+
+    res.json({
+      id: ref.id,
+      status,
+      next: TRANSITIONS[status],
+      event: { id: eventRef.id, fromStatus: from, toStatus: status, note: event.note, createdAt: iso(event.createdAt) },
+    });
+  });
+
