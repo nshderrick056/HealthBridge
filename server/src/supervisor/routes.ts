@@ -101,3 +101,93 @@ export function supervisorRouter(fb: Fb, sender: SmsSender) {
     }
   }
 
+  router.get('/alerts', ...guard, async (req, res) => {
+    const { hc } = centreOf(res);
+    const { status, limit } = listQuery.parse(req.query);
+    const base = fs.collection('alerts').where('healthCenterId', '==', hc);
+    const query = status && status !== 'open' ? base.where('status', '==', status) : base;
+    // Received time, not the phone clock, which may be wrong (App Flow §7).
+    const snap = await query.orderBy('createdAt', 'desc').limit(limit).get();
+    const docs = status === 'open' ? snap.docs.filter((d) => d.data().status !== 'resolved') : snap.docs;
+    const counts = await Promise.all(
+      STATUSES.map(async (s) => [s, (await base.where('status', '==', s).count().get()).data().count] as const),
+    );
+
+    const alerts = await Promise.all(
+      docs.map(async (d) => {
+        const { alert, visit, patient, chw, signs } = await expand(d);
+        return {
+          id: d.id,
+          status: alert.status,
+          channel: alert.channel,
+          createdAt: iso(alert.createdAt),
+          ackedToChwAt: iso(alert.ackedToChwAt),
+          isPartial: !!visit.isPartial,
+          visit: { id: alert.visitId, type: visit.type ?? null, recordedAt: iso(visit.recordedAt) },
+          patient: { shortId: patient?.shortId ?? null, name: patientName(patient) },
+          chw: { id: alert.chwId, name: chw?.fullName ?? null },
+          village: patient?.village || chw?.village || null,
+          dangerSigns: signs.map((s) => s.label),
+        };
+      }),
+    );
+    res.json({ alerts, counts: Object.fromEntries(counts) });
+  });
+
+  router.get('/alerts/:id', ...guard, async (req, res) => {
+    const { hc } = centreOf(res);
+    const snap = await ownAlert(req.params.id, hc);
+    const { alert, visit, patient, chw, signs } = await expand(snap);
+    const events = await snap.ref.collection('events').orderBy('createdAt', 'asc').get();
+    const actors = new Map<string, string>();
+    for (const e of events.docs) {
+      const actorId = e.data().actorId as string | null;
+      if (actorId && !actors.has(actorId)) {
+        actors.set(actorId, ((await fs.collection('users').doc(actorId).get()).data()?.fullName as string) ?? '');
+      }
+    }
+
+    res.json({
+      id: snap.id,
+      status: alert.status,
+      channel: alert.channel,
+      createdAt: iso(alert.createdAt),
+      ackedToChwAt: iso(alert.ackedToChwAt),
+      next: TRANSITIONS[alert.status as Status],
+      visit: {
+        id: alert.visitId,
+        shortCode: visit.shortCode ?? null,
+        type: visit.type ?? null,
+        answers: visit.answers ?? {},
+        notes: visit.notes ?? null,
+        followUpOn: iso(visit.followUpOn),
+        recordedAt: iso(visit.recordedAt),
+        receivedAt: iso(visit.receivedAt),
+        source: visit.source ?? null,
+        isPartial: !!visit.isPartial,
+      },
+      // Minimum necessary for triage: no patient phone number.
+      patient: {
+        shortId: patient?.shortId ?? null,
+        name: patientName(patient),
+        sex: patient?.sex ?? null,
+        birthDate: iso(patient?.birthDate),
+        ageEstimate: patient?.ageEstimate ?? null,
+        village: patient?.village || chw?.village || null,
+      },
+      chw: { id: alert.chwId, name: chw?.fullName ?? null, phone: chw?.phone ?? null },
+      dangerSigns: signs,
+      events: events.docs.map((e) => {
+        const ev = e.data();
+        return {
+          id: e.id,
+          fromStatus: ev.fromStatus ?? null,
+          toStatus: ev.toStatus,
+          note: ev.note ?? null,
+          actor: ev.actorId ? (actors.get(ev.actorId) ?? null) : null,
+          createdAt: iso(ev.createdAt),
+        };
+      }),
+    });
+  });
+
