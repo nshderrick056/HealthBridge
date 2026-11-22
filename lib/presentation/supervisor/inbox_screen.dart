@@ -176,3 +176,24 @@ class AlertCard extends StatelessWidget {
   }
 }
 
+/// A case's status as a tinted pill.
+class StatusTag extends StatelessWidget {
+  const StatusTag(this.status, {super.key});
+
+  final AlertStatus status;
+
+  /// (background, text) for a status: red while it needs action, amber for follow-up.
+  static (Color, Color) colours(AlertStatus status) => switch (status) {
+    AlertStatus.newCase => (HbColors.redTint, HbColors.red),
+    AlertStatus.escalated => (HbColors.redTint, HbColors.red),
+    AlertStatus.followUp => (HbColors.amberTint, HbColors.warning),
+    AlertStatus.reviewed => (HbColors.tealTint, HbColors.brand),
+    AlertStatus.resolved => (HbColors.greenTint, HbColors.brand),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = colours(status);
+    return HbPill(status.label, background: bg, foreground: fg);
+  }
+}
