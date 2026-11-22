@@ -284,3 +284,50 @@ export function supervisorRouter(fb: Fb, sender: SmsSender) {
     };
   }
 
+  // shortcut: equality filters only (no composite index) and newest-first sorting in memory, capped at
+  // MAX_VISITS; add an index and orderBy/limit in the query when one CHW or patient passes ~2000 visits.
+  const MAX_VISITS = 200;
+  async function centreVisits(hc: string, field: 'chwId' | 'patientId', value: string) {
+    const snap = await fs.collection('visits').where('healthCenterId', '==', hc).where(field, '==', value).get();
+    const at = (d: FirebaseFirestore.QueryDocumentSnapshot) => (d.data().recordedAt as Timestamp | undefined)?.toMillis() ?? 0;
+    return snap.docs.sort((a, b) => at(b) - at(a)).slice(0, MAX_VISITS);
+  }
+
+  const patientJson = (id: string, p: FirebaseFirestore.DocumentData) => ({
+    id,
+    shortId: p.shortId ?? null,
+    name: patientName(p),
+    village: p.village || null,
+    sex: p.sex ?? null,
+    ageEstimate: p.ageEstimate ?? null,
+    birthDate: iso(p.birthDate),
+  });
+
+  /** One CHW of the centre and their visits, newest first, each with its patient. */
+  router.get('/chws/:id', ...guard, async (req, res) => {
+    const { hc } = centreOf(res);
+    const id = idParam.parse(req.params.id);
+    const u = (await fs.collection('users').doc(id).get()).data() as (UserDoc & { chwRole?: string }) | undefined;
+    if (!u || u.role !== 'chw' || u.healthCenterId !== hc) throw new HttpError(404, 'not_found');
+    const docs = await centreVisits(hc, 'chwId', id);
+    const labels = await signLabels(docs.map((d) => d.data()));
+    const patientIds = [...new Set(docs.map((d) => d.data().patientId as string))];
+    const patients = patientIds.length
+      ? await fs.getAll(...patientIds.map((p) => fs.collection('patients').doc(p)))
+      : [];
+    const byId = new Map(patients.map((p) => [p.id, p.data()]));
+    res.json({
+      chw: { id, name: u.fullName, chwRole: u.chwRole ?? null, phone: u.phone, village: u.village ?? null },
+      visits: docs.map((d) => {
+        const v = d.data();
+        const p = byId.get(v.patientId);
+        return {
+          ...visitJson(d.id, v, labels),
+          patient: { id: v.patientId, shortId: p?.shortId ?? null, name: patientName(p) },
+        };
+      }),
+    });
+  });
+
+  const patientsQuery = z.object({ q: z.string().trim().max(100).optional() });
+
