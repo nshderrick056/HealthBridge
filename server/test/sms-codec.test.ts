@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CodecError, SMS_MAX, ackTag, decodePlaintext, encodePlaintext, openSms, parseSms, seal } from '../src/sms/codec';
 
+
 // Same vector as test/core/sms/codec_test.dart, so the server's tag and the phone's check agree.
 describe('ack tag', () => {
   it('is the first 12 hex of HMAC-SHA256 over "HB OK <code>" with the device key', () => {

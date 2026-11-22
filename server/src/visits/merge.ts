@@ -10,6 +10,7 @@ import { HttpError } from '../http';
 import { callerOf, requireRole, requireUser } from '../middleware/auth';
 import { STUB_PATIENT_NAME } from '../sms/webhook';
 
+
 export function visitsRouter(fb: Fb) {
   const router = Router();
   const { fs } = fb;
