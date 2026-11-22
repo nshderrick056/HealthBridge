@@ -208,3 +208,65 @@ class _RecordVisitScreenState extends ConsumerState<RecordVisitScreen> {
               children: [
                 HbTextField(
                   label: 'Temperature (°C)',
+                  hint: 'e.g. 37.2',
+                  controller: _temperature,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? null
+                      : temperatureC.check(double.tryParse(v.trim())),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'General condition',
+                  style: HbText.labelMedium.copyWith(
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final c in const ['Stable', needsAttention])
+                      HbChoice(
+                        c,
+                        selected: f.condition == c,
+                        onTap: () {
+                          _controller.setCondition(c);
+                          _save();
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          HbTextField(
+            label: 'Symptoms / observations',
+            hint: 'What did you observe?',
+            controller: _symptoms,
+            maxLines: 3,
+          ),
+          HbTextField(
+            label: 'Notes',
+            hint: 'Anything else to record',
+            controller: _notes,
+            maxLines: 3,
+          ),
+          if (f.signs.isNotEmpty)
+            Text(
+              f.signs.length == 1
+                  ? '1 danger sign ticked: this visit is urgent.'
+                  : '${f.signs.length} danger signs ticked: this visit is urgent.',
+              style: HbText.labelMedium.copyWith(color: HbColors.red),
+            ),
+          HbButton.primary('Review visit', onPressed: () => _review(f)),
+        ],
+      ),
+    );
+  }
+}
+
+/// A danger sign the CHW can tick; ticked signs turn red.
