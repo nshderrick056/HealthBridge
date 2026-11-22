@@ -106,3 +106,57 @@ void main() {
         expect(payload['danger_signs'], ['CV', 'HB']);
         expect(payload['answers'], containsPair('temperature', 38.9));
         expect(payload['recorded_at'], '2026-10-06T19:14:00.000Z');
+      },
+    );
+
+    test('no signs means not urgent', () async {
+      final p = await newPatient();
+      final v = await visits.record(patientId: p.id, type: VisitType.child);
+      expect(v.isUrgent, isFalse);
+      expect(await visits.signCodes(v.id), isEmpty);
+    });
+
+    test('a failed save rolls back the visit, its signs and its outbox row together', () async {
+      await newPatient();
+      final before = (await db.select(db.outbox).get()).length;
+      await expectLater(
+        visits.record(
+          patientId: 'no-such-patient',
+          type: VisitType.malaria,
+          signCodes: ['LT'],
+        ),
+        throwsA(anything),
+      );
+      expect(await db.select(db.visits).get(), isEmpty);
+      expect(await db.select(db.visitDangerSigns).get(), isEmpty);
+      expect(await db.select(db.outbox).get(), hasLength(before));
+    });
+
+    test('watchForPatient lists newest first', () async {
+      final p = await newPatient();
+      final old = await visits.record(
+        patientId: p.id,
+        type: VisitType.child,
+        recordedAt: DateTime.utc(2026, 1, 1),
+      );
+      final recent = await visits.record(
+        patientId: p.id,
+        type: VisitType.child,
+      );
+      expect((await visits.watchForPatient(p.id).first).map((v) => v.id), [
+        recent.id,
+        old.id,
+      ]);
+    });
+  });
+
+  group('drafts', () {
+    test('save overwrites, load reads back, delete removes', () async {
+      final drafts = DraftsRepository(db, now: () => clock);
+      expect(await drafts.load('visit.maternal'), isNull);
+      await drafts.save('visit.maternal', {'temperature': 37.5});
+      await drafts.save('visit.maternal', {'temperature': 38.0, 'notes': 'x'});
+      expect(await drafts.load('visit.maternal'), {
+        'temperature': 38.0,
+        'notes': 'x',
+      });
