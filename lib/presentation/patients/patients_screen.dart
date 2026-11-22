@@ -68,3 +68,63 @@ class PatientsScreen extends ConsumerWidget {
           ],
         ),
         if (views.isEmpty)
+          HbCard(
+            padding: const EdgeInsets.all(22),
+            child: Text(
+              patients.isEmpty
+                  ? 'No patients yet. Register your first patient.'
+                  : 'No patients match.',
+              style: HbText.bodyMedium.copyWith(color: HbColors.muted),
+            ),
+          ),
+        for (final village in villages)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
+                child: Text(
+                  '$village · ${byVillage[village]!.length}',
+                  style: HbText.bodySmall.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ),
+              HbCard(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Column(
+                  children: [
+                    for (final (i, v) in byVillage[village]!.indexed) ...[
+                      if (i > 0)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 18),
+                          child: HbDivider(),
+                        ),
+                      PatientRow(
+                        view: v,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                PatientProfileScreen(patientId: v.patient.id),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        HbButton.primary(
+          'Register patient',
+          icon: Icons.add,
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => const RegisterPatientScreen(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Avatar coloured by status, name, details, and one status word when it means something.
