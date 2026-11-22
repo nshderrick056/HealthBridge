@@ -357,3 +357,127 @@ class _PatientRowTile extends StatelessWidget {
   }
 }
 
+/// One patient of the centre: profile, CHW, and every visit with what was recorded.
+class SupervisorPatientScreen extends ConsumerWidget {
+  const SupervisorPatientScreen({super.key, required this.patientId});
+
+  final String patientId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(patientHistoryProvider(patientId));
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () => ref.refresh(patientHistoryProvider(patientId).future),
+        child: PageBody(
+          children: [
+            _backRow(context),
+            ...history.when(
+              loading: () => [_loading()],
+              error: (e, _) => [_failed(e, 'patient')],
+              data: (h) {
+                final p = h.patient;
+                final urgent = h.visits.isNotEmpty && h.visits.first.isUrgent;
+                final header = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        HbAvatar(
+                          p.name ?? p.shortId ?? '?',
+                          kind: AvatarKind.lime,
+                          size: 56,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.name ?? 'Name not received yet',
+                                style: HbText.headingLarge.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                ),
+                              ),
+                              Text(
+                                [
+                                  ?p.ageSex,
+                                  ?p.village,
+                                  ?p.shortId,
+                                  if (h.archived) 'archived by the CHW',
+                                ].join(' · '),
+                                style: HbText.bodySmall.copyWith(
+                                  color: urgent
+                                      ? HbColors.onRed
+                                      : HbColors.onBrand,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (urgent) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        'The latest visit was urgent.',
+                        style: HbText.headingSmall.copyWith(
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+                return [
+                  if (urgent)
+                    HbCard(color: HbColors.red, shadow: false, child: header)
+                  else
+                    HbGradientCard(child: header),
+                  HbCard(
+                    child: Row(
+                      children: [
+                        HbAvatar(p.chwName ?? 'CHW', kind: AvatarKind.lime),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                p.chwName ?? 'Unknown CHW',
+                                style: HbText.headingSmall,
+                              ),
+                              Text(
+                                ['CHW', ?h.chwPhone].join(' · '),
+                                style: HbText.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (h.chwId != null)
+                          IconButton(
+                            tooltip: 'Open the CHW',
+                            icon: const Icon(Icons.chevron_right),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    ChwHistoryScreen(chwId: h.chwId!),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  SectionHeading('Visits (${h.visits.length})'),
+                  if (h.visits.isEmpty)
+                    Text('No visits recorded yet.', style: HbText.bodySmall),
+                  for (final v in h.visits) HistoryVisitCard(visit: v),
+                ];
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
