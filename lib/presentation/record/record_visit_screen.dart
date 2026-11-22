@@ -270,3 +270,54 @@ class _RecordVisitScreenState extends ConsumerState<RecordVisitScreen> {
 }
 
 /// A danger sign the CHW can tick; ticked signs turn red.
+class _SignRow extends StatelessWidget {
+  const _SignRow({
+    required this.label,
+    required this.ticked,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool ticked;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    checked: ticked,
+    child: InkWell(
+      onTap: () => onChanged(!ticked),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: ticked ? HbColors.red : HbColors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: ticked
+                    ? null
+                    : Border.all(color: HbColors.edge, width: 2),
+              ),
+              child: ticked
+                  ? const Icon(Icons.check, size: 18, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: HbText.bodyMedium.copyWith(
+                  fontSize: 17,
+                  color: ticked ? HbColors.red : HbColors.ink,
+                  fontWeight: ticked ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
