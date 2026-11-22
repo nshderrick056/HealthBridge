@@ -173,3 +173,41 @@ class PatientRow extends StatelessWidget {
 
 /// A choice among a few (filters, visit types): dark pill when chosen, white when not.
 class ChoiceChipPill extends StatelessWidget {
+  const ChoiceChipPill({
+    super.key,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    button: true,
+    child: Material(
+      color: selected ? HbColors.ink : HbColors.white,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Text(
+              label,
+              style: HbText.bodyMedium.copyWith(
+                color: selected ? Colors.white : HbColors.ink,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
