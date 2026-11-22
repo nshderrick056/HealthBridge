@@ -15,3 +15,20 @@ describe('PatientHistory', () => {
       }),
     );
     render(<PatientHistory id="p1" />);
+
+    expect(await screen.findByRole('heading', { name: 'Uwase Marie' })).toBeInTheDocument();
+    expect(fetch.mock.calls[0][0]).toBe('/api/patients/p1');
+    expect(screen.getByText(/32 years · Female · Nyamata · P0412/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Claudine M.' })).toHaveAttribute('href', '/chws/c1');
+    expect(screen.getByText('Heavy bleeding')).toBeInTheDocument();
+    expect(screen.getByText('38.9 °C')).toBeInTheDocument();
+    expect(screen.getByText('Referred')).toBeInTheDocument();
+    expect(screen.getByText('The latest visit was urgent.')).toBeInTheDocument();
+  });
+
+  it('says so when the patient belongs to another centre', async () => {
+    mockFetch(() => json({ error: 'not_found' }, 404));
+    render(<PatientHistory id="p9" />);
+    expect(await screen.findByText(/belongs to another health centre/)).toBeInTheDocument();
+  });
+});
