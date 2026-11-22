@@ -38,3 +38,40 @@ export function VisitHistory({ visits, showPatient = false }: { visits: HistoryV
           {v.dangerSigns.length > 0 && (
             <p className="mt-1 text-[15px] font-medium text-red">{v.dangerSigns.join(' · ')}</p>
           )}
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[15px]">
+            {v.temperature != null && (
+              <>
+                <dt className="text-muted">Temperature</dt>
+                <dd>{v.temperature} °C</dd>
+              </>
+            )}
+            {v.condition && (
+              <>
+                <dt className="text-muted">Condition</dt>
+                <dd>{v.condition}</dd>
+              </>
+            )}
+            {v.symptoms && (
+              <>
+                <dt className="text-muted">Symptoms</dt>
+                <dd className="whitespace-pre-line">{v.symptoms}</dd>
+              </>
+            )}
+            {v.notes && (
+              <>
+                <dt className="text-muted">Notes</dt>
+                <dd className="whitespace-pre-line">{v.notes}</dd>
+              </>
+            )}
+            {v.followUpOn && (
+              <>
+                <dt className="text-muted">Follow-up</dt>
+                <dd>{formatDate(v.followUpOn)}</dd>
+              </>
+            )}
+          </dl>
+        </li>
+      ))}
+    </ol>
+  );
+}
