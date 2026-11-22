@@ -138,3 +138,73 @@ class _RecordVisitScreenState extends ConsumerState<RecordVisitScreen> {
           const HbStepBar(step: 'Step 2 / 3'),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Record visit', style: HbText.headingLarge),
+              const SizedBox(height: 4),
+              Text(
+                [
+                  f.patient.fullName,
+                  if (view.ageSex.isNotEmpty) view.ageSex,
+                  'today',
+                ].join(' · '),
+                style: HbText.bodySmall,
+              ),
+            ],
+          ),
+          const SectionHeading('Visit type'),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final t in VisitType.values)
+                HbChoice(
+                  visitTypeLabel(t),
+                  selected: f.type == t,
+                  onTap: () {
+                    _controller.setType(t);
+                    _save();
+                  },
+                ),
+            ],
+          ),
+          if (signs.isNotEmpty) ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionHeading('Danger signs'),
+                Text(
+                  'Tick any you see. Any danger sign makes this visit urgent.',
+                  style: HbText.bodySmall,
+                ),
+              ],
+            ),
+            HbCard(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Column(
+                children: [
+                  for (final (i, s) in signs.indexed) ...[
+                    if (i > 0)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 18),
+                        child: HbDivider(),
+                      ),
+                    _SignRow(
+                      label: s.labelEn,
+                      ticked: f.signs.contains(s.code),
+                      onChanged: (v) {
+                        _controller.setSign(s.code, v);
+                        _save();
+                      },
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          const SectionHeading('Measurements'),
+          HbCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                HbTextField(
+                  label: 'Temperature (°C)',
