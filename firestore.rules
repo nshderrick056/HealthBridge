@@ -118,3 +118,32 @@ service cloud.firestore {
 
     // ---- Alerts: one per urgent visit (document ID = visit ID) ----
     // The phone raises the internet alert itself; status changes go through the server, which
+    // checks the allowed transitions, writes the event and texts the CHW.
+
+    match /alerts/{visitId} {
+      allow read: if (isChw() && existing().chwId == uid())
+        || (isSupervisor() && existing().healthCenterId == hc());
+      allow create: if isChw()
+        && incoming().keys().hasOnly(['visitId', 'chwId', 'healthCenterId', 'channel', 'status',
+          'createdAt'])
+        && incoming().visitId == visitId
+        && incoming().chwId == uid() && incoming().healthCenterId == hc()
+        && incoming().channel == 'internet' && incoming().status == 'new'
+        && getAfter(/databases/$(database)/documents/visits/$(visitId)).data.chwId == uid()
+        && getAfter(/databases/$(database)/documents/visits/$(visitId)).data.isUrgent == true;
+      allow update, delete: if false;
+
+      match /events/{eventId} {
+        allow read: if isSupervisor()
+          && get(/databases/$(database)/documents/alerts/$(visitId)).data.healthCenterId == hc();
+        allow write: if false;
+      }
+    }
+
+    // Server-only: credentials, deviceKeys, smsMessages, auditLog, resetRequests, and anything
+    // not listed above. No app can read or write them.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
