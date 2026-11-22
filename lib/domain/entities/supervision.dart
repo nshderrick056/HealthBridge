@@ -209,3 +209,61 @@ class PatientRow {
   final int visitCount;
 }
 
+/// A CHW and every visit they recorded, newest first.
+class ChwHistory {
+  ChwHistory.fromJson(Map<String, dynamic> j)
+    : chw = ChwSummary.fromJson(j['chw'] as Map<String, dynamic>),
+      visits = [
+        for (final v in j['visits'] as List)
+          HistoryVisit.fromJson(v as Map<String, dynamic>),
+      ];
+
+  final ChwSummary chw;
+  final List<HistoryVisit> visits;
+}
+
+/// A patient of the centre, their CHW and every visit, newest first.
+class PatientHistory {
+  PatientHistory.fromJson(Map<String, dynamic> j)
+    : patient = PatientRow.fromJson({
+        ...(j['patient'] as Map<String, dynamic>),
+        'chw': j['chw'],
+      }),
+      archived = (j['patient'] as Map)['archived'] as bool? ?? false,
+      chwId = (j['chw'] as Map?)?['id'] as String?,
+      chwPhone = (j['chw'] as Map?)?['phone'] as String?,
+      visits = [
+        for (final v in j['visits'] as List)
+          HistoryVisit.fromJson(v as Map<String, dynamic>),
+      ];
+
+  final PatientRow patient;
+  final bool archived;
+  final String? chwId;
+  final String? chwPhone;
+  final List<HistoryVisit> visits;
+}
+
+class ResetRequest {
+  ResetRequest.fromJson(Map<String, dynamic> j)
+    : id = j['id'] as String,
+      name = j['name'] as String?,
+      phone = j['phone'] as String?,
+      role = j['role'] as String?,
+      createdAt = _date(j['createdAt']);
+
+  final String id;
+  final String? name;
+  final String? phone;
+  final String? role;
+  final DateTime? createdAt;
+}
+
+class HealthCentre {
+  HealthCentre.fromJson(Map<String, dynamic> j)
+    : id = j['id'] as String,
+      name = j['name'] as String;
+
+  final String id;
+  final String name;
+}
