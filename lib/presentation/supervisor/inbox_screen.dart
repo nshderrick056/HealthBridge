@@ -1,0 +1,104 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/theme/app_theme.dart';
+import '../../core/widgets/widgets.dart';
+import '../../data/providers.dart';
+import '../../domain/entities/supervision.dart';
+import '../patients/patients_screen.dart';
+import '../view_models.dart';
+import 'case_screen.dart';
+import 'supervisor_controllers.dart';
+
+/// The supervisor's urgent-alert inbox for their health centre (Figma v3 "Supervisor alerts").
+class InboxScreen extends ConsumerWidget {
+  const InboxScreen({super.key});
+
+  static const _filters = [
+    ('open', 'Open'),
+    ('new', 'New'),
+    ('escalated', 'Escalated'),
+    ('follow_up', 'Follow-up'),
+    ('resolved', 'Resolved'),
+    (null, 'All'),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final filter = ref.watch(inboxFilterProvider);
+    final alerts = ref.watch(inboxProvider);
+    final session = ref.watch(sessionProvider);
+    return PageBody(
+      children: [
+        if (session != null)
+          ProfileHeader(name: session.fullName, role: 'Supervisor'),
+        const PageHeader(
+          title: 'Urgent alerts',
+          subtitle: 'Your health centre, updated every 10 seconds',
+        ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (value, label) in _filters)
+              ChoiceChipPill(
+                label: label,
+                selected: filter == value,
+                onTap: () => ref.read(inboxFilterProvider.notifier).show(value),
+              ),
+          ],
+        ),
+        ...alerts.when(
+          data: (list) => list.isEmpty
+              ? [
+                  HbCard(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('No alerts here', style: HbText.headingMedium),
+                        const SizedBox(height: 6),
+                        Text(
+                          'A new alert shows here as soon as a CHW sends one, '
+                          'by internet or by SMS.',
+                          style: HbText.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ]
+              : [
+                  HbCard(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Column(
+                      children: [
+                        for (final (i, a) in list.indexed) ...[
+                          if (i > 0)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 18),
+                              child: HbDivider(),
+                            ),
+                          AlertCard(alert: a),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+          loading: () => [
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+          error: (_, _) => [
+            Text(
+              'Could not load alerts. Check your connection.',
+              style: HbText.bodyMedium.copyWith(color: HbColors.red),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
