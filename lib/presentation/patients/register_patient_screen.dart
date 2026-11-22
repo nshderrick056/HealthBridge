@@ -118,3 +118,58 @@ class _RegisterPatientScreenState extends ConsumerState<RegisterPatientScreen> {
                   label: 'Female',
                   selected: choices.sex == 'F',
                   onTap: () => controller.setSex('F'),
+                ),
+                ChoiceChipPill(
+                  label: 'Male',
+                  selected: choices.sex == 'M',
+                  onTap: () => controller.setSex('M'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            HbTextField(
+              label: 'Age (years)',
+              hint: 'Estimated age',
+              controller: _age,
+              keyboardType: TextInputType.number,
+              validator: validateAge,
+            ),
+            const SizedBox(height: 14),
+            HbTextField(
+              label: 'Phone (optional)',
+              hint: 'Phone number',
+              controller: _phone,
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 14),
+            if (!_editing)
+              HbCard(
+                onTap: () => controller.setConsent(!choices.consent),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: choices.consent,
+                      onChanged: (v) => controller.setConsent(v ?? false),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'The patient agreed to have their health information recorded.',
+                        style: HbText.bodySmall.copyWith(
+                          color: HbColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 18),
+            HbButton.primary(
+              _editing ? 'Save changes' : 'Save patient',
+              onPressed: choices.consent ? _save : null,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
