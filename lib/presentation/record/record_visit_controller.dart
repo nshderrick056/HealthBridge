@@ -53,3 +53,57 @@ class RecordVisitController extends Notifier<RecordVisitState> {
         .forType(form.type);
     if (!ref.mounted) return null;
     state = RecordVisitState(patientId: p.id, form: form, signs: signs);
+    return form;
+  }
+
+  /// Copies the text fields into the form and autosaves the draft.
+  void saveDraft({
+    required String symptoms,
+    required String temperature,
+    required String notes,
+  }) {
+    final f = state.form;
+    if (f == null) return;
+    f.symptoms = symptoms;
+    f.temperature = double.tryParse(temperature.trim());
+    f.notes = notes;
+    ref.read(draftsRepositoryProvider).save(draftKey, f.toDraft());
+  }
+
+  /// A new visit type clears the ticked signs and loads that type's list.
+  Future<void> setType(VisitType type) async {
+    final f = state.form!;
+    f.type = type;
+    f.signs.clear();
+    _changed();
+    final signs = await ref.read(dangerSignsRepositoryProvider).forType(type);
+    if (!ref.mounted) return;
+    state = RecordVisitState(
+      patientId: state.patientId,
+      form: state.form,
+      signs: signs,
+    );
+  }
+
+  void setCondition(String condition) {
+    state.form!.condition = condition;
+    _changed();
+  }
+
+  void setSign(String code, bool ticked) {
+    final signs = state.form!.signs;
+    ticked ? signs.add(code) : signs.remove(code);
+    _changed();
+  }
+
+  void _changed() => state = RecordVisitState(
+    patientId: state.patientId,
+    form: state.form,
+    signs: state.signs,
+  );
+}
+
+final recordVisitProvider = NotifierProvider.autoDispose
+    .family<RecordVisitController, RecordVisitState, String?>(
+      RecordVisitController.new,
+    );
