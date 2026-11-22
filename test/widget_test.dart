@@ -80,3 +80,61 @@ void main() {
       await settle(
         tester,
       ); // the next screen loads the visit with a second real-time query
+
+      expect(find.text('Send urgent alert'), findsOneWidget);
+      expect(
+        find.text('Uwase Marie needs the health centre today'),
+        findsOneWidget,
+      );
+      expect(find.text('Heavy bleeding'), findsOneWidget);
+      final visits = (await tester.runAsync(() => db.select(db.visits).get()))!;
+      expect(visits.single.isUrgent, isTrue);
+      expect(visits.single.syncState, SyncState.queued);
+      expect(
+        (await tester.runAsync(() => db.select(db.outbox).get()))!,
+        hasLength(1),
+      );
+      await finish(tester);
+    },
+  );
+
+  Future<void> seedUrgent(String channel, DispatchState state) async {
+    final now = DateTime.now();
+    await db
+        .into(db.patients)
+        .insert(
+          PatientsCompanion.insert(
+            id: 'p1',
+            shortId: 'P000001',
+            fullName: 'Uwase Marie',
+            village: 'Nyamata',
+            consentAt: now,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+  }
+    await db
+        .into(db.visits)
+        .insert(
+          VisitsCompanion.insert(
+            id: 'v1',
+            shortCode: '7f3c9a21',
+            patientId: 'p1',
+            type: VisitType.maternal,
+            recordedAt: now,
+            isUrgent: const Value(true),
+          ),
+        );
+    await db
+        .into(db.urgentDispatch)
+        .insert(
+          UrgentDispatchCompanion.insert(
+            visitId: 'v1',
+            channel: channel,
+            state: state,
+            sentAt: Value(now),
+          ),
+        );
+  }
+
