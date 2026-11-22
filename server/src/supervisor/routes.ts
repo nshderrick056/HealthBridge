@@ -47,3 +47,57 @@ const iso = (t: unknown) => (t instanceof Timestamp ? t.toDate().toISOString() :
 const patientName = (p: { fullName?: string } | undefined) =>
   !p || p.fullName === STUB_PATIENT_NAME ? null : (p.fullName ?? null);
 
+export function supervisorRouter(fb: Fb, sender: SmsSender) {
+  const router = Router();
+  const { fs } = fb;
+  const guard = [requireUser(fb), requireRole('supervisor')];
+
+  function centreOf(res: Response) {
+    const { uid, hc } = callerOf(res);
+    if (!hc) throw new HttpError(403, 'no_health_center');
+    return { uid, hc };
+  }
+
+  async function ownAlert(id: unknown, hc: string) {
+    const snap = await fs.collection('alerts').doc(idParam.parse(id)).get();
+    if (!snap.exists || snap.data()!.healthCenterId !== hc) throw new HttpError(404, 'not_found');
+    return snap;
+  }
+
+  /** The alert with its visit, patient, CHW and danger-sign labels. */
+  async function expand(a: DocumentSnapshot) {
+    const alert = a.data()!;
+    const visit = (await fs.collection('visits').doc(alert.visitId).get()).data() ?? {};
+    const [patientSnap, chwSnap] = await Promise.all([
+      fs.collection('patients').doc(visit.patientId ?? '-').get(),
+      fs.collection('users').doc(alert.chwId).get(),
+    ]);
+    const signs: string[] = visit.dangerSigns ?? [];
+    const labels = signs.length ? await fs.getAll(...signs.map((c) => fs.collection('dangerSigns').doc(c))) : [];
+    return {
+      alert,
+      visit,
+      patient: patientSnap.data(),
+      chw: chwSnap.data() as UserDoc | undefined,
+      signs: labels.map((l) => ({ code: l.id, label: (l.data()?.labelEn as string) ?? l.id })),
+    };
+  }
+
+  /** Sends and logs the CHW notice. A failed send is logged, never an error: the status change stands. */
+  async function notifyChw(alertId: string, status: Status) {
+    const notice = CHW_NOTICE[status];
+    if (!notice) return;
+    const { visit, chw } = await expand(await fs.collection('alerts').doc(alertId).get());
+    if (!chw) return;
+    const text = notice(visit.shortCode);
+    const out = { direction: 'out', phone: chw.phone, deviceId: visit.deviceId ?? null, rawText: text, visitId: alertId };
+    const log = (extra: Record<string, unknown>) =>
+      fs.collection('smsMessages').add({ ...out, ...extra, createdAt: FieldValue.serverTimestamp() });
+    try {
+      const { gatewayId } = await sender.send(chw.phone, text);
+      await log({ status: 'sent', gatewayId, error: null });
+    } catch (e) {
+      await log({ status: 'failed', gatewayId: null, error: String(e).slice(0, 200) });
+    }
+  }
+
