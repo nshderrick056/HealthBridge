@@ -28,3 +28,55 @@ void main() {
     expect(find.text('1'), findsOneWidget);
   });
 }
+
+  testWidgets(
+    'recording a visit with a danger sign saves it as urgent and opens the urgent screen',
+    (tester) async {
+      await db
+          .into(db.patients)
+          .insert(
+            PatientsCompanion.insert(
+              id: 'p1',
+              shortId: 'P000001',
+              fullName: 'Uwase Marie',
+              village: 'Nyamata',
+              consentAt: DateTime.now(),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            ),
+          );
+      await pumpShell(tester);
+      await tester.tap(find.text('Record').last);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Uwase Marie'));
+      await settle(tester);
+      await tester.scrollUntilVisible(
+        find.text('Heavy bleeding'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('Heavy bleeding'));
+      await tester.pump();
+      await tester.tap(find.text('Heavy bleeding'));
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.text('Review visit'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Review visit'));
+      await tester.pumpAndSettle();
+      expect(find.text('Check and save'), findsOneWidget);
+      expect(find.text('This visit is urgent'), findsOneWidget);
+
+      await tester.scrollUntilVisible(
+        find.text('Save visit'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.tap(find.text('Save visit'));
+      await settle(tester);
+      await settle(
+        tester,
+      ); // the next screen loads the visit with a second real-time query
