@@ -223,3 +223,64 @@ export function supervisorRouter(fb: Fb, sender: SmsSender) {
     });
   });
 
+  router.get('/chws', ...guard, async (_req, res) => {
+    const { hc } = centreOf(res);
+    const snap = await fs
+      .collection('users')
+      .where('healthCenterId', '==', hc)
+      .where('role', '==', 'chw')
+      .where('active', '==', true)
+      .get();
+    const chws = await Promise.all(
+      snap.docs.map(async (d) => {
+        const u = d.data();
+        const devices = await fs.collection('devices').where('userId', '==', d.id).get();
+        const last = Math.max(
+          0,
+          ...devices.docs
+            .filter((x) => !x.data().revokedAt)
+            .map((x) => (x.data().lastSyncAt as Timestamp | null)?.toMillis() ?? 0),
+        );
+        // Pending = urgent cases that reached us only by SMS and still wait for the phone's full record.
+        const pending = await fs.collection('visits').where('chwId', '==', d.id).where('isPartial', '==', true).count().get();
+        return {
+          id: d.id,
+          name: u.fullName as string,
+          chwRole: u.chwRole ?? null,
+          phone: u.phone,
+          village: u.village ?? null,
+          lastSyncAt: last ? new Date(last).toISOString() : null,
+          pendingCount: pending.data().count,
+        };
+      }),
+    );
+    chws.sort((a, b) => a.name.localeCompare(b.name));
+    res.json({ chws });
+  });
+
+  /** Danger-sign codes to their English labels, fetched once per request. */
+  async function signLabels(visits: FirebaseFirestore.DocumentData[]) {
+    const codes = [...new Set(visits.flatMap((v) => (v.dangerSigns as string[] | undefined) ?? []))];
+    const snaps = codes.length ? await fs.getAll(...codes.map((c) => fs.collection('dangerSigns').doc(c))) : [];
+    return new Map(snaps.map((s) => [s.id, (s.data()?.labelEn as string) ?? s.id]));
+  }
+
+  /** A visit as the history screens show it: what was recorded, not the raw form. */
+  function visitJson(id: string, v: FirebaseFirestore.DocumentData, labels: Map<string, string>) {
+    const answers = (v.answers ?? {}) as Record<string, unknown>;
+    return {
+      id,
+      type: v.type ?? null,
+      recordedAt: iso(v.recordedAt),
+      receivedAt: iso(v.receivedAt),
+      isUrgent: !!v.isUrgent,
+      isPartial: !!v.isPartial,
+      dangerSigns: ((v.dangerSigns as string[] | undefined) ?? []).map((c) => labels.get(c) ?? c),
+      temperature: typeof answers.temperature === 'number' ? answers.temperature : null,
+      condition: typeof answers.general_condition === 'string' ? answers.general_condition : null,
+      symptoms: typeof answers.symptoms === 'string' && answers.symptoms.trim() ? answers.symptoms : null,
+      notes: v.notes || null,
+      followUpOn: iso(v.followUpOn),
+    };
+  }
+
