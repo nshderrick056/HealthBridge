@@ -58,3 +58,63 @@ class PatientView {
   /// From the latest visit: danger signs, then the CHW's "Needs attention" tag, then a due follow-up.
   StatusKind get status {
     final v = latest;
+    if (v == null) return StatusKind.stable;
+    if (v.isUrgent) return StatusKind.urgent;
+    final answers = jsonDecode(v.answersJson);
+    if (answers is Map && answers['general_condition'] == needsAttention) {
+      return StatusKind.attention;
+    }
+    final due = v.followUpOn;
+    if (due != null && !due.isAfter(DateTime.now())) return StatusKind.followUp;
+    return StatusKind.stable;
+  }
+
+  String get ageSex {
+    final p = patient;
+    final age = p.birthDate != null
+        ? DateTime.now().difference(p.birthDate!).inDays ~/ 365
+        : p.ageEstimate;
+    final sex = switch (p.sex) {
+      'F' => 'Female',
+      'M' => 'Male',
+      _ => null,
+    };
+    return [if (age != null) '$age years', ?sex].join(' \u00B7 ');
+  }
+
+  String get when =>
+      latest == null ? 'No visits' : relativeDay(latest!.recordedAt.toLocal());
+}
+
+List<PatientView> buildPatientViews(
+  List<Patient> patients,
+  List<Visit> visits,
+) => [
+  for (final p in patients)
+    PatientView(p, visits.where((v) => v.patientId == p.id).toList()),
+];
+
+class SyncCounts {
+  const SyncCounts({
+    required this.synced,
+    required this.pending,
+    required this.failed,
+  });
+  final int synced;
+  final int pending;
+  final int failed;
+}
+
+SyncCounts syncCounts(List<Patient> patients, List<Visit> visits) {
+  final states = [
+    ...patients.map((p) => p.syncState),
+    ...visits.map((v) => v.syncState),
+  ];
+  return SyncCounts(
+    synced: states.where((s) => s == SyncState.synced).length,
+    pending: states
+        .where((s) => s == SyncState.local || s == SyncState.queued)
+        .length,
+    failed: states.where((s) => s == SyncState.failed).length,
+  );
+}
