@@ -169,3 +169,43 @@ class HistoryVisit {
   final String? patientName;
 }
 
+String? _ageSex(Map<String, dynamic> j) {
+  final birth = _date(j['birthDate']);
+  final age = birth != null
+      ? DateTime.now().difference(birth).inDays ~/ 365
+      : (j['ageEstimate'] as num?)?.toInt();
+  final sex = switch (j['sex']) {
+    'F' => 'Female',
+    'M' => 'Male',
+    _ => null,
+  };
+  final s = [if (age != null) '$age years', ?sex].join(' · ');
+  return s.isEmpty ? null : s;
+}
+
+/// One of the centre's patients in the supervisor's list.
+class PatientRow {
+  PatientRow.fromJson(Map<String, dynamic> j)
+    : id = j['id'] as String,
+      shortId = j['shortId'] as String?,
+      name = j['name'] as String?,
+      village = j['village'] as String?,
+      ageSex = _ageSex(j),
+      chwName = (j['chw'] as Map?)?['name'] as String?,
+      lastVisitAt = _date(j['lastVisitAt']),
+      lastVisitUrgent = j['lastVisitUrgent'] as bool? ?? false,
+      visitCount = (j['visitCount'] as num?)?.toInt() ?? 0;
+
+  final String id;
+  final String? shortId;
+
+  /// Null until the full record of an SMS-only case arrives.
+  final String? name;
+  final String? village;
+  final String? ageSex;
+  final String? chwName;
+  final DateTime? lastVisitAt;
+  final bool lastVisitUrgent;
+  final int visitCount;
+}
+
