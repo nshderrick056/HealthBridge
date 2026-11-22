@@ -102,3 +102,77 @@ class InboxScreen extends ConsumerWidget {
   }
 }
 
+/// One case in the inbox: an avatar coloured by status, who and what, and the status in words.
+class AlertCard extends StatelessWidget {
+  const AlertCard({super.key, required this.alert});
+
+  final AlertSummary alert;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = alert;
+    final name = a.patientName ?? 'Patient ${a.patientShortId ?? ''}';
+    final when = a.createdAt == null
+        ? ''
+        : '${relativeDay(a.createdAt!)} ${clock(a.createdAt!)}';
+    final (_, color) = StatusTag.colours(a.status);
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(builder: (_) => CaseScreen(alertId: a.id)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            HbAvatar(
+              name,
+              kind: switch (a.status) {
+                AlertStatus.newCase ||
+                AlertStatus.escalated => AvatarKind.urgent,
+                AlertStatus.followUp => AvatarKind.due,
+                _ => AvatarKind.plain,
+              },
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: HbText.headingSmall),
+                  Text(
+                    [
+                      if (a.chwName != null) 'CHW ${a.chwName}',
+                      if (a.village != null && a.village!.isNotEmpty)
+                        a.village!,
+                      when,
+                    ].join(' · '),
+                    style: HbText.bodySmall,
+                  ),
+                  if (a.dangerSigns.isNotEmpty)
+                    Text(
+                      a.dangerSigns.join(', '),
+                      style: HbText.bodySmall.copyWith(color: HbColors.red),
+                    ),
+                  if (a.channel == 'sms' || a.isPartial)
+                    Text(
+                      a.isPartial
+                          ? 'By SMS · full record not received yet'
+                          : 'Arrived by SMS',
+                      style: HbText.bodySmall.copyWith(color: HbColors.warning),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              a.status.label,
+              style: HbText.labelMedium.copyWith(color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
