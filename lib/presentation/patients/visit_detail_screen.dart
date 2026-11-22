@@ -53,3 +53,61 @@ class VisitDetailScreen extends ConsumerWidget {
           if (v.isUrgent)
             HbCard(
               color: HbColors.red,
+              shadow: false,
+              child: Text(
+                'This visit was urgent',
+                style: HbText.headingSmall.copyWith(color: Colors.white),
+              ),
+            ),
+          if (detail.signs.isNotEmpty) ...[
+            const SectionHeading('Danger signs'),
+            HbCard(
+              child: Column(
+                children: [
+                  for (final c in detail.signs)
+                    BulletLine(labels[c] ?? c, HbColors.red),
+                ],
+              ),
+            ),
+          ],
+          const SectionHeading('What was recorded'),
+          HbCard(
+            child: Column(
+              children: [
+                DetailRow('Visit type', visitTypeLabel(v.type)),
+                if (temperature != null) ...[
+                  const SizedBox(height: 12),
+                  DetailRow('Temperature', '$temperature °C'),
+                ],
+                if (condition != null) ...[
+                  const SizedBox(height: 12),
+                  DetailRow('General condition', condition),
+                ],
+                if (v.followUpOn != null) ...[
+                  const SizedBox(height: 12),
+                  DetailRow('Follow-up', fullDate(v.followUpOn!.toLocal())),
+                ],
+                const SizedBox(height: 12),
+                DetailRow(
+                  'Sync',
+                  sent,
+                  valueColor: v.syncState == SyncState.synced
+                      ? HbColors.brand
+                      : HbColors.warning,
+                ),
+              ],
+            ),
+          ),
+          if (symptoms.isNotEmpty) ...[
+            const SectionHeading('Symptoms / observations'),
+            HbCard(child: Text(symptoms, style: HbText.bodyMedium)),
+          ],
+          if (v.notes?.trim().isNotEmpty == true) ...[
+            const SectionHeading('Notes'),
+            HbCard(child: Text(v.notes!.trim(), style: HbText.bodyMedium)),
+          ],
+        ],
+      ),
+    );
+  }
+}
