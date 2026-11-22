@@ -56,3 +56,50 @@ class SupervisionRepository {
       PatientHistory.fromJson(await _api.get('/patients/$id'));
 }
 
+/// The system admin's tools: reset requests, accounts and health centres. There is no self sign-up.
+class AdminRepository {
+  AdminRepository(this._api);
+
+  final ApiClient _api;
+
+  Future<List<ResetRequest>> resetRequests() async {
+    final j = await _api.get('/admin/reset-requests');
+    return [
+      for (final r in j['requests'] as List)
+        ResetRequest.fromJson(r as Map<String, dynamic>),
+    ];
+  }
+
+  /// Texts the user a one-time code; the admin never sees it.
+  Future<void> approve(String requestId) =>
+      _api.post('/admin/reset-requests/$requestId/approve');
+
+  Future<List<HealthCentre>> centres() async {
+    final j = await _api.get('/admin/health-centers');
+    return [
+      for (final c in j['centres'] as List)
+        HealthCentre.fromJson(c as Map<String, dynamic>),
+    ];
+  }
+
+  Future<String> createCentre({
+    required String name,
+    required String district,
+    required String sector,
+    String? callNumber,
+  }) async {
+    final j = await _api.post('/admin/health-centers', {
+      'name': name.trim(),
+      'district': district.trim(),
+      'sector': sector.trim(),
+      if (callNumber != null && callNumber.trim().isNotEmpty)
+        'callNumber': callNumber.trim(),
+    });
+    return j['id'] as String;
+  }
+
+  /// A CHW (phone, optional email) or a supervisor (phone + email). The server texts them temporary
+  /// sign-in details; returns false when that SMS could not be sent.
+  Future<bool> createUser(Map<String, Object?> account) async =>
+      (await _api.post('/admin/users', account))['smsSent'] == true;
+}
