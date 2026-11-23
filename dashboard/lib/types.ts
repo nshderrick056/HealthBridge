@@ -53,3 +53,10 @@ export type AlertDetail = {
     name: string | null;
     sex: 'F' | 'M' | null;
     birthDate: string | null;
+    ageEstimate: number | null;
+    village: string | null;
+  };
+  chw: { id: string; name: string; phone: string };
+  dangerSigns: { code: string; label: string }[];
+  events: AlertEvent[];
+};
