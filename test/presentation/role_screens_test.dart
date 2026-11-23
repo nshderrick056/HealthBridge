@@ -150,3 +150,15 @@ void main() {
     expect(find.text('Ask for follow-up'), findsOneWidget);
     expect(find.text('Resolve'), findsOneWidget);
     expect(find.text('Escalate'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'Seen at the clinic');
+    await tester.ensureVisible(find.text('Resolve'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Resolve'));
+    await tester.pump();
+    expect(repo.moves.single, (
+      'a1',
+      AlertStatus.resolved,
+      'Seen at the clinic',
+    ));
+  });
