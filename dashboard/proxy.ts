@@ -10,3 +10,8 @@ export function proxy(req: NextRequest) {
   if (adminPage !== (role === 'admin')) return NextResponse.redirect(new URL(homeOf(role), req.url));
   return NextResponse.next();
 }
+
+export const config = {
+  // `/` is left to app/page.tsx, which sends each role home.
+  matcher: ['/((?!login|api|_next/static|_next/image|favicon.ico).+)'],
+};
