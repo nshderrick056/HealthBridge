@@ -10,3 +10,10 @@ const MESSAGES: Record<string, string> = {
   must_change: 'You are using the temporary password from the SMS. Sign in to the HealthBridge app first to choose your own.',
   api_unreachable: 'Cannot reach the HealthBridge server. Check your connection and try again.',
 };
+
+export function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
