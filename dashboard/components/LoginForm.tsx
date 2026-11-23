@@ -41,3 +41,15 @@ export function LoginForm() {
     }
     setBusy(false);
   }
+
+  const field =
+    'mt-2 block w-full rounded-2xl border-[1.5px] border-edge bg-white px-4 py-3.5 text-base focus:border-brand focus:outline-none';
+  return (
+    <form onSubmit={submit} className="space-y-5">
+      <label className="block text-[15px] font-medium">
+        Email
+        <input
+          type="email"
+          autoComplete="username"
+          required
+          value={email}
