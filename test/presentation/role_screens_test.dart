@@ -90,3 +90,16 @@ class _FakeAdmin extends AdminRepository {
     for (final (i, n) in centreNames.indexed)
       HealthCentre.fromJson({'id': 'hc$i', 'name': n}),
   ];
+
+  @override
+  Future<String> createCentre({
+    required String name,
+    required String district,
+    required String sector,
+    String? callNumber,
+  }) async {
+    centreNames.add(name.trim());
+    lastCall = callNumber;
+    return 'hc${centreNames.length - 1}';
+  }
+}
