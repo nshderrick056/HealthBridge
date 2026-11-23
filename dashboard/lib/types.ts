@@ -45,3 +45,11 @@ export type AlertDetail = {
     followUpOn: string | null;
     recordedAt: string;
     receivedAt: string;
+    source: 'sync' | 'sms';
+    isPartial: boolean;
+  };
+  patient: {
+    shortId: string;
+    name: string | null;
+    sex: 'F' | 'M' | null;
+    birthDate: string | null;
