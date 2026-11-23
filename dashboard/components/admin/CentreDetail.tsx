@@ -1,0 +1,50 @@
+'use client';
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import type { CentreDetails } from '@/lib/admin';
+import { Avatar } from '../badges';
+import { ChevronIcon } from '../icons';
+import { usePolling } from '../usePolling';
+
+const ROLE = { chw: 'CHW', supervisor: 'Supervisor' };
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap justify-between gap-x-6 gap-y-1 px-5 py-3.5 sm:px-6">
+      <dt className="text-muted">{label}</dt>
+      <dd className="font-medium">{children}</dd>
+    </div>
+  );
+}
+
+/** One health centre: its details and the CHWs and supervisors who belong to it. */
+export function CentreDetail({ id }: { id: string }) {
+  const { data, error } = usePolling<CentreDetails>(`admin/health-centers/${id}`, 60_000);
+  return (
+    <div className="space-y-6">
+      <Link
+        href="/admin/centres"
+        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-4 text-[15px] font-medium shadow-card hover:bg-teal-tint"
+      >
+        <span aria-hidden>←</span> All health centres
+      </Link>
+      {error === 'not_found' && (
+        <p className="rounded-3xl bg-white p-8 text-center text-muted shadow-card">This health centre no longer exists.</p>
+      )}
+      {error && error !== 'not_found' && !data && (
+        <p role="alert" className="rounded-2xl bg-red-tint px-4 py-3 text-[15px] text-red">
+          Could not load this health centre. Trying again shortly.
+        </p>
+      )}
+      {!data && !error && <p className="text-muted">Loading…</p>}
+      {data && (
+        <>
+          <header>
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{data.name}</h1>
+            <p className="mt-1 text-muted">{[data.district, data.sector].filter(Boolean).join(' · ') || 'No location set'}</p>
+          </header>
+          <dl className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
+            <Row label="District">{data.district ?? '—'}</Row>
+            <Row label="Sector">{data.sector ?? '—'}</Row>
+            <Row label="Call number">
+              {data.callNumber ? (
