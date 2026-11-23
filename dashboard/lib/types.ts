@@ -37,3 +37,11 @@ export type AlertDetail = {
   ackedToChwAt: string | null;
   next: AlertStatus[];
   visit: {
+    id: string;
+    shortCode: string;
+    type: VisitType;
+    answers: Record<string, unknown>;
+    notes: string | null;
+    followUpOn: string | null;
+    recordedAt: string;
+    receivedAt: string;
