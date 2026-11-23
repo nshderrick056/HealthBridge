@@ -48,3 +48,51 @@ export function ResetRequests() {
       )}
       {error && !data && (
         <p role="alert" className="rounded-2xl bg-red-tint px-4 py-3 text-[15px] text-red">
+          Could not load the requests. Trying again shortly.
+        </p>
+      )}
+      {!data && !error && <p className="text-muted">Loading…</p>}
+      {data && data.requests.length === 0 && (
+        <p className="rounded-3xl bg-white px-6 py-10 text-center text-muted shadow-card">No one is waiting.</p>
+      )}
+      {data && data.requests.length > 0 && (
+        <ul className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
+          {data.requests.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center gap-4 px-5 py-4 sm:px-6">
+              <Avatar name={r.name ?? '?'} />
+              <div className="min-w-0 flex-1">
+                <p className="text-[17px] font-semibold">
+                  {r.name ?? 'Unknown account'}
+                  {r.role && (
+                    <span className="ml-2 rounded-full bg-canvas px-2.5 py-0.5 text-sm font-medium text-muted">
+                      {ROLE[r.role] ?? r.role}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[15px] text-muted">
+                  {r.phone ?? 'No phone'}
+                  {r.createdAt && (
+                    <>
+                      {' · asked '}
+                      <time dateTime={r.createdAt} title={formatDateTime(r.createdAt)}>
+                        {timeAgo(r.createdAt)}
+                      </time>
+                    </>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={busy !== undefined}
+                onClick={() => approve(r)}
+                className="min-h-11 rounded-full bg-ink px-5 text-[15px] font-semibold text-white hover:bg-brand-deep disabled:opacity-40"
+              >
+                {busy === r.id ? 'Approving…' : 'Approve'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
