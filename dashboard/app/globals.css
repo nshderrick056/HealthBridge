@@ -7,3 +7,16 @@
   --color-*: initial;
   --color-white: #ffffff;
   --color-transparent: transparent;
+
+  --color-brand: #19695a;
+  --color-brand-light: #3c8f63;
+  --color-brand-deep: #0f3f35;
+  --color-lime: #d4ff89;
+  --color-ink: #1d2220;
+  --color-muted: #5e6a66;
+  --color-canvas: #f1f4f3;
+  --color-edge: #7e8a85;
+  --color-on-brand: #d7eae3;
+  --color-on-red: #ffe3e0;
+  --color-side: #9aa5a1;
+  --color-chevron: #b5beba;
