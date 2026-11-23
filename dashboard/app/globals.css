@@ -1,0 +1,9 @@
+@import 'tailwindcss';
+
+/* Tokens from lib/core/theme/app_theme.dart (Figma "Prototype v3" and "Web dashboards (v3)").
+   The default palette is switched off so only these colours exist. The older names (teal, ...)
+   point at the v3 colours so existing classes follow the new palette. */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
