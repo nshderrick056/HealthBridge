@@ -34,3 +34,11 @@ export async function forward(req: NextRequest, path: string[]) {
   const access = req.cookies.get(ACCESS_COOKIE)?.value;
   const refresh = req.cookies.get(REFRESH_COOKIE)?.value;
   const body = req.method === 'GET' ? undefined : await req.text();
+
+  const call = (token: string) =>
+    fetch(`${apiUrl()}/${target}${req.nextUrl.search}`, {
+      method: req.method,
+      headers: { authorization: `Bearer ${token}`, ...(body ? { 'content-type': 'application/json' } : {}) },
+      body,
+      cache: 'no-store',
+    });
