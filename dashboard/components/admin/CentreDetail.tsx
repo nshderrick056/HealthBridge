@@ -48,3 +48,47 @@ export function CentreDetail({ id }: { id: string }) {
             <Row label="Sector">{data.sector ?? '—'}</Row>
             <Row label="Call number">
               {data.callNumber ? (
+                <a href={`tel:${data.callNumber}`} className="text-brand underline underline-offset-4">
+                  {data.callNumber}
+                </a>
+              ) : (
+                <span className="text-warning">Not set: CHWs cannot call from an urgent alert</span>
+              )}
+            </Row>
+          </dl>
+
+          <section aria-labelledby="members" className="space-y-3">
+            <h2 id="members" className="text-xl font-semibold tracking-tight">
+              Members <span className="font-normal text-muted">{data.members.length}</span>
+            </h2>
+            {data.members.length === 0 ? (
+              <p className="rounded-3xl bg-white px-6 py-10 text-center text-muted shadow-card">
+                No one belongs to this health centre yet.
+              </p>
+            ) : (
+              <ul className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
+                {data.members.map((m) => (
+                  <li key={m.id}>
+                    <Link href={`/admin/members/${m.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-canvas sm:px-6">
+                      <Avatar name={m.fullName} tone={m.active ? 'plain' : 'due'} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[17px] font-semibold">
+                          {m.fullName}
+                          {!m.active && <span className="ml-2 text-sm font-semibold text-warning">Switched off</span>}
+                        </p>
+                        <p className="text-[15px] text-muted">{[ROLE[m.role], m.phone].join(' · ')}</p>
+                      </div>
+                      <span className="text-chevron" aria-hidden>
+                        <ChevronIcon />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
+    </div>
+  );
+}
