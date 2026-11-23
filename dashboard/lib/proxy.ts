@@ -42,3 +42,15 @@ export async function forward(req: NextRequest, path: string[]) {
       body,
       cache: 'no-store',
     });
+
+  let upstream: Response | null = null;
+  let renewed: string | null = null;
+  try {
+    if (access) upstream = await call(access);
+    if ((!upstream || upstream.status === 401) && refresh) {
+      renewed = await refreshAccess(refresh);
+      if (renewed) upstream = await call(renewed);
+    }
+  } catch {
+    return json({ error: 'api_unreachable' }, 502);
+  }
