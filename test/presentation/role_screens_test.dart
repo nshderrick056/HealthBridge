@@ -103,3 +103,14 @@ class _FakeAdmin extends AdminRepository {
     return 'hc${centreNames.length - 1}';
   }
 }
+
+void main() {
+  Future<void> pump(WidgetTester tester, Widget home, List overrides) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 0.55;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [...overrides],
