@@ -58,3 +58,37 @@ export function Members() {
       )}
       {!data && !error && <p className="text-muted">Loading…</p>}
       {data && data.members.length === 0 && (
+        <p className="rounded-3xl bg-white px-6 py-10 text-center text-muted shadow-card">
+          No {role === 'chw' ? 'CHWs' : 'supervisors'} yet.
+        </p>
+      )}
+      {data && data.members.length > 0 && (
+        <ul role="tabpanel" className="divide-y divide-line overflow-hidden rounded-3xl bg-white shadow-card">
+          {data.members.map((m) => (
+            <li key={m.id}>
+              <Link href={`/admin/members/${m.id}`} className="flex items-center gap-4 px-5 py-4 hover:bg-canvas sm:px-6">
+                <Avatar name={m.fullName} tone={m.active ? 'plain' : 'due'} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[17px] font-semibold">
+                    {m.fullName}
+                    {!m.active && (
+                      <span className="ml-2 rounded-full bg-amber-tint px-2.5 py-0.5 text-sm font-semibold text-warning">
+                        Switched off
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[15px] text-muted">
+                    {[m.phone, m.village, m.healthCenterName].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <span className="text-chevron" aria-hidden>
+                  <ChevronIcon />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
