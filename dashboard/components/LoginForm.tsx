@@ -30,3 +30,14 @@ export function LoginForm() {
       });
       if (res.ok) {
         const { role } = (await res.json().catch(() => ({}))) as { role?: string };
+        router.replace(role === 'admin' ? '/admin/resets' : '/alerts');
+        router.refresh();
+        return;
+      }
+      const { error: code } = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(MESSAGES[code ?? ''] ?? 'Could not sign in. Try again.');
+    } catch {
+      setError(MESSAGES.api_unreachable);
+    }
+    setBusy(false);
+  }
