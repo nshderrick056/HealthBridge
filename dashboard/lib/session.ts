@@ -25,3 +25,13 @@ const base = {
 // A Firebase ID token lives 60 min; its cookie expires five minutes earlier so we refresh before the API says 401.
 const ACCESS_MAX_AGE = 55 * 60;
 const REFRESH_MAX_AGE = 30 * 24 * 3600;
+
+export function setSession(
+  res: NextResponse,
+  s: { accessToken: string; refreshToken?: string; name?: string; role?: DashboardRole },
+) {
+  res.cookies.set(ACCESS_COOKIE, s.accessToken, { ...base, maxAge: ACCESS_MAX_AGE });
+  if (s.refreshToken) res.cookies.set(REFRESH_COOKIE, s.refreshToken, { ...base, maxAge: REFRESH_MAX_AGE });
+  if (s.name) res.cookies.set(NAME_COOKIE, s.name, { ...base, maxAge: REFRESH_MAX_AGE });
+  if (s.role) res.cookies.set(ROLE_COOKIE, s.role, { ...base, maxAge: REFRESH_MAX_AGE });
+}
