@@ -63,3 +63,14 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={field}
+        />
+      </label>
+      {error && (
+        <p role="alert" className="rounded-2xl bg-red-tint px-4 py-3 text-[15px] text-red">
+          {error}
+        </p>
+      )}
+      <button
