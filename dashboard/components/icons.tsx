@@ -62,3 +62,15 @@ export const UserPlusIcon = ({ className = 'size-4' }) => (
     <path d="M2 21a7 7 0 0 1 14 0M19 8v6M22 11h-6" />
   </svg>
 );
+
+export const HospitalIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <path d="M4 21V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v16M2 21h20M12 7v6M9 10h6M10 21v-4h4v4" />
+  </svg>
+);
+
+export const ChevronIcon = ({ className = 'size-3.5' }) => (
+  <svg {...props} className={className}>
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+);
