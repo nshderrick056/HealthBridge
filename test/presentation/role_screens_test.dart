@@ -36,3 +36,15 @@ class _FakeSupervision extends SupervisionRepository {
       'dangerSigns': ['Heavy bleeding'],
     }),
   ];
+
+  @override
+  Future<AlertDetail> alert(String id) async => AlertDetail.fromJson({
+    'id': id,
+    'status': 'escalated',
+    'channel': 'internet',
+    'next': ['follow_up', 'resolved'],
+    'visit': {'shortCode': '7f3c9a21', 'type': 'maternal', 'answers': {}},
+    'patient': {
+      'shortId': 'P0412',
+      'name': 'Uwase Marie',
+      'village': 'Nyamata',
