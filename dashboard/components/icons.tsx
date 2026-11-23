@@ -35,3 +35,10 @@ export const ArrowUpIcon = ({ className = 'size-4' }) => (
     <path d="M12 19V5M5 12l7-7 7 7" />
   </svg>
 );
+
+export const SmsIcon = ({ className = 'size-3.5' }) => (
+  <svg {...props} className={className}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m9 9 6 6M15 9l-6 6" />
+  </svg>
+);
