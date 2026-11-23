@@ -22,3 +22,15 @@ const ROUTES: { method: string; path: RegExp }[] = [
   { method: 'POST', path: /^admin\/health-centers$/ },
   { method: 'POST', path: /^admin\/users$/ },
 ];
+
+const json = (body: unknown, status: number) =>
+  NextResponse.json(body, { status, headers: { 'cache-control': 'no-store' } });
+
+/** Forwards /api/<path> to the API with the session's bearer token, refreshing it once on expiry. */
+export async function forward(req: NextRequest, path: string[]) {
+  const target = path.join('/');
+  if (!ROUTES.some((r) => r.method === req.method && r.path.test(target))) return json({ error: 'not_found' }, 404);
+
+  const access = req.cookies.get(ACCESS_COOKIE)?.value;
+  const refresh = req.cookies.get(REFRESH_COOKIE)?.value;
+  const body = req.method === 'GET' ? undefined : await req.text();
