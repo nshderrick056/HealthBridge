@@ -22,3 +22,8 @@ export async function POST(req: NextRequest) {
   }
   // Still the temporary password from the admin's SMS: it is replaced in the app first.
   if (signIn.mustChange) return NextResponse.json({ error: 'must_change' }, { status: 403 });
+
+  const out = NextResponse.json({ name: signIn.name, role });
+  setSession(out, { accessToken: signIn.idToken, refreshToken: signIn.refreshToken, name: signIn.name, role });
+  return out;
+}
