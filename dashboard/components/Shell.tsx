@@ -60,3 +60,10 @@ export async function Shell({ section, children }: { section: Section; children:
           <NavLinks section={section} />
         </div>
       </header>
+
+      <main className="min-w-0 flex-1 px-4 py-6 sm:px-8 lg:px-10 lg:py-9">
+        <div className="mx-auto max-w-6xl">{children}</div>
+      </main>
+    </div>
+  );
+}
