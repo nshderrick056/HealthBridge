@@ -78,3 +78,15 @@ class _FakeAdmin extends AdminRepository {
           }),
         ]
       : [];
+
+  @override
+  Future<void> approve(String requestId) async => approved.add(requestId);
+
+  final centreNames = <String>['Nyamata Health Centre'];
+  String? lastCall;
+
+  @override
+  Future<List<HealthCentre>> centres() async => [
+    for (final (i, n) in centreNames.indexed)
+      HealthCentre.fromJson({'id': 'hc$i', 'name': n}),
+  ];
