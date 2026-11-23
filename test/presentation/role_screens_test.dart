@@ -66,3 +66,15 @@ class _FakeSupervision extends SupervisionRepository {
 class _FakeAdmin extends AdminRepository {
   _FakeAdmin() : super(_unused());
   final approved = <String>[];
+
+  @override
+  Future<List<ResetRequest>> resetRequests() async => approved.isEmpty
+      ? [
+          ResetRequest.fromJson({
+            'id': 'r1',
+            'name': 'Mukamana Alice',
+            'phone': '+250790218726',
+            'role': 'chw',
+          }),
+        ]
+      : [];
