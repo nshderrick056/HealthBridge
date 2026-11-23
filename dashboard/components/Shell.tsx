@@ -37,3 +37,16 @@ export async function Shell({ section, children }: { section: Section; children:
         <div className="space-y-4 border-t border-white/15 pt-5">
           <div className="flex items-center gap-3">
             <span
+              aria-hidden
+              className="flex size-11 shrink-0 items-center justify-center rounded-full bg-lime text-[15px] font-semibold text-ink"
+            >
+              {name ? initials(name) : '?'}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-semibold text-white">{name ?? role}</p>
+              <p className="text-sm text-side">{role}</p>
+            </div>
+          </div>
+          <SignOut className="w-full" />
+        </div>
+      </aside>
