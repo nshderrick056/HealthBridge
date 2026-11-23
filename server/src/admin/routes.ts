@@ -53,3 +53,59 @@ export function adminRouter(fb: Fb, sender: SmsSender) {
     const pin = b.role === 'chw' ? randomInt(1_000_000).toString().padStart(6, '0') : undefined;
     const password = b.email ? randomBytes(9).toString('base64url') : undefined;
     const id = await createAccount(fb, { ...b, pin, password } as AccountInput, undefined, true);
+    await audit(fb, callerOf(res).uid, 'user.create', 'users', id);
+
+    const parts = [
+      pin && `PIN ${pin}`,
+      password && `email ${b.email} and password ${password}`,
+    ].filter(Boolean);
+    let smsSent = true;
+    try {
+      await sender.send(
+        b.phone,
+        `HealthBridge: your account is ready. Sign in with ${parts.join(', or ')}. You will then choose your own.`,
+      );
+    } catch {
+      // The account stands; the user can still get in through Forgot PIN/password.
+      smsSent = false;
+    }
+    res.status(201).json({ id, role: b.role, fullName: b.fullName, smsSent });
+  });
+
+  /** A member (CHW or supervisor) as the admin pages show them. */
+  const memberJson = (id: string, u: FirebaseFirestore.DocumentData) => ({
+    id,
+    role: u.role as string,
+    fullName: u.fullName as string,
+    phone: u.phone as string,
+    email: (u.email as string | null) ?? null,
+    chwRole: (u.chwRole as string | null) ?? null,
+    village: (u.village as string | null) ?? null,
+    healthCenterId: (u.healthCenterId as string | null) ?? null,
+    active: u.active !== false,
+    createdAt: (u.createdAt as Timestamp | undefined)?.toDate().toISOString() ?? null,
+  });
+
+  const members = ['chw', 'supervisor'] as const;
+  const idParam = z.string().min(1).max(128);
+
+  /** Admins manage CHWs and supervisors only; an admin account is never changed or deleted here. */
+  async function member(id: unknown) {
+    const ref = fb.fs.collection('users').doc(idParam.parse(id));
+    const data = (await ref.get()).data();
+    if (!data || !members.includes(data.role)) throw new HttpError(404, 'not_found');
+    return { ref, data };
+  }
+
+  /** CHWs or supervisors, by name, each with the name of their health centre. */
+  router.get('/users', async (req, res) => {
+    const role = z.enum(members).parse(req.query.role);
+    const [users, centres] = await Promise.all([
+      fb.fs.collection('users').where('role', '==', role).get(),
+      fb.fs.collection('healthCenters').get(),
+    ]);
+    const names = new Map(centres.docs.map((c) => [c.id, c.data().name as string]));
+    const list = users.docs
+      .map((d) => ({ ...memberJson(d.id, d.data()), healthCenterName: names.get(d.data().healthCenterId) ?? null }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+
