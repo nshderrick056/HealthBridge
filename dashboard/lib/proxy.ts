@@ -63,3 +63,10 @@ export async function forward(req: NextRequest, path: string[]) {
   const out = new NextResponse(await upstream.text(), {
     status: upstream.status,
     headers: {
+      'content-type': upstream.headers.get('content-type') ?? 'application/json',
+      'cache-control': 'no-store',
+    },
+  });
+  if (renewed) setSession(out, { accessToken: renewed });
+  return out;
+}
