@@ -32,3 +32,15 @@ export function NavLinks({ section = 'supervisor', vertical = false }: { section
             aria-current={active ? 'page' : undefined}
             className={`flex min-h-11 shrink-0 items-center gap-3 rounded-full px-4 py-2.5 text-[15px] ${
               active ? 'bg-lime font-semibold text-ink' : 'text-white hover:bg-white/10'
+            }`}
+          >
+            <span className={active ? 'text-ink' : 'text-side'}>
+              <Icon />
+            </span>
+            {vertical ? label : short}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
