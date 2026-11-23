@@ -15,3 +15,10 @@ export const AlertIcon = ({ className = 'size-4' }) => (
     <path d="M12 8v4M12 16h.01" />
   </svg>
 );
+
+export const UserIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </svg>
+);
