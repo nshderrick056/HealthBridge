@@ -50,3 +50,13 @@ export async function Shell({ section, children }: { section: Section; children:
           <SignOut className="w-full" />
         </div>
       </aside>
+
+      <header className="bg-ink px-4 pt-4 pb-3 lg:hidden">
+        <div className="flex items-center justify-between">
+          <span className="text-lg font-semibold text-lime">HealthBridge</span>
+          <SignOut />
+        </div>
+        <div className="mt-2">
+          <NavLinks section={section} />
+        </div>
+      </header>
