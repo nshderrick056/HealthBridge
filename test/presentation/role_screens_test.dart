@@ -21,3 +21,12 @@ ApiClient _unused() => ApiClient(
 class _FakeSupervision extends SupervisionRepository {
   _FakeSupervision() : super(_unused());
   final moves = <(String, AlertStatus, String?)>[];
+
+  @override
+  Future<List<AlertSummary>> alerts({String? status}) async => [
+    AlertSummary.fromJson({
+      'id': 'a1',
+      'status': 'new',
+      'channel': 'sms',
+      'createdAt': '2026-11-15T08:00:00Z',
+      'isPartial': true,
