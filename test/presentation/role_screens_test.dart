@@ -178,3 +178,16 @@ void main() {
       expect(find.text('No one is waiting.'), findsOneWidget);
     },
   );
+
+  testWidgets('the admin adds a health centre, which joins the list', (
+    tester,
+  ) async {
+    final repo = _FakeAdmin();
+    await pump(tester, const CentresScreen(), [
+      adminRepositoryProvider.overrideWithValue(repo),
+    ]);
+    expect(find.text('Nyamata Health Centre'), findsOneWidget);
+
+    await tester.tap(find.text('Add health centre'));
+    await tester.pump();
+    expect(repo.centreNames, hasLength(1)); // empty form is refused
