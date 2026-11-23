@@ -30,3 +30,9 @@ class _FakeSupervision extends SupervisionRepository {
       'channel': 'sms',
       'createdAt': '2026-11-15T08:00:00Z',
       'isPartial': true,
+      'patient': {'shortId': 'P0412', 'name': null},
+      'chw': {'name': 'Mukamana Alice'},
+      'village': 'Gatare',
+      'dangerSigns': ['Heavy bleeding'],
+    }),
+  ];
