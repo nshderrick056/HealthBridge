@@ -215,3 +215,10 @@ void main() {
         (ref) => const Session(
           accessToken: 't',
           userId: 'u1',
+          fullName: 'Mukamana Alice',
+          mustChange: true,
+        ),
+      ),
+    ]);
+    expect(find.text('Choose your own PIN'), findsOneWidget);
+    expect(find.text('New password'), findsNothing); // no email, no password
