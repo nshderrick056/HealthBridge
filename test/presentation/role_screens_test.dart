@@ -191,3 +191,18 @@ void main() {
     await tester.tap(find.text('Add health centre'));
     await tester.pump();
     expect(repo.centreNames, hasLength(1)); // empty form is refused
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Gashora Health Centre');
+    await tester.enterText(fields.at(1), 'Bugesera');
+    await tester.enterText(fields.at(2), 'Gashora');
+    await tester.enterText(fields.at(3), '0788 123 456');
+    await tester.ensureVisible(find.text('Add health centre'));
+    await tester.tap(find.text('Add health centre'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(repo.centreNames.last, 'Gashora Health Centre');
+    expect(repo.lastCall, '+250788123456');
+    expect(find.text('Gashora Health Centre'), findsOneWidget);
+  });
