@@ -41,3 +41,14 @@ export function clearSession(res: NextResponse) {
     res.cookies.set(name, '', { ...base, maxAge: 0 });
   }
 }
+
+/** Where a role starts. A session from before the role cookie existed is a supervisor's. */
+export const homeOf = (role: string | undefined) => (role === 'admin' ? '/admin/resets' : '/alerts');
+
+// Sign-in is Firebase Auth (project healthbridge-rwanda). Its web API key is public (it is in the
+// Android app too); it identifies the project, it does not grant access.
+function firebaseKey() {
+  const key = process.env.FIREBASE_WEB_API_KEY;
+  if (!key) throw new Error('FIREBASE_WEB_API_KEY is not set');
+  return key;
+}
