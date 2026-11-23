@@ -42,3 +42,16 @@ export const SmsIcon = ({ className = 'size-3.5' }) => (
     <path d="m9 9 6 6M15 9l-6 6" />
   </svg>
 );
+
+export const WifiIcon = ({ className = 'size-3.5' }) => (
+  <svg {...props} className={className}>
+    <path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0M12 19.5h.01" />
+  </svg>
+);
+
+export const KeyIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <circle cx="7.5" cy="15.5" r="5.5" />
+    <path d="m21 2-9.6 9.6M15.5 7.5l2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+  </svg>
+);
