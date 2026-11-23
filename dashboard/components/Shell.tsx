@@ -21,3 +21,12 @@ function SignOut({ className = '' }: { className?: string }) {
     </form>
   );
 }
+
+/** Dark sidebar on wide screens (Figma "Web dashboards (v3)"), a dark top bar on phones. */
+export async function Shell({ section, children }: { section: Section; children: ReactNode }) {
+  const name = (await cookies()).get(NAME_COOKIE)?.value;
+  const role = section === 'admin' ? 'Admin' : 'Supervisor';
+  return (
+    <div className="lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-ink px-5 pt-8 pb-6 lg:flex">
+        <p className="text-[22px] font-semibold tracking-tight text-lime">HealthBridge</p>
