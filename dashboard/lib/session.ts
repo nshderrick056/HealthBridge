@@ -52,3 +52,7 @@ function firebaseKey() {
   if (!key) throw new Error('FIREBASE_WEB_API_KEY is not set');
   return key;
 }
+
+export type FirebaseSignIn =
+  | { ok: true; idToken: string; refreshToken: string; name: string; role: string | null; mustChange: boolean }
+  | { ok: false; status: number; error: string };
