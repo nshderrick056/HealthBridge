@@ -162,3 +162,12 @@ void main() {
       'Seen at the clinic',
     ));
   });
+
+  testWidgets(
+    'the admin approves a reset request, which then leaves the list',
+    (tester) async {
+      final repo = _FakeAdmin();
+      await pump(tester, const ResetRequestsScreen(), [
+        adminRepositoryProvider.overrideWithValue(repo),
+      ]);
+      expect(find.text('Mukamana Alice'), findsOneWidget);
