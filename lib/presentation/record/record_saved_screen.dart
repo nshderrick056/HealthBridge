@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,82 +10,37 @@ import '../sync/sync_status_screen.dart';
 import '../view_models.dart';
 
 class RecordSavedScreen extends ConsumerWidget {
-  const RecordSavedScreen({
-    super.key,
-    required this.visitId,
-  });
+  const RecordSavedScreen({super.key, required this.visitId});
 
   final String visitId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final result = ref.watch(visitDetailProvider(visitId));
-
-    if (result.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    final detail = result.value;
-
-    if (result.hasError || detail == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Saved visit'),
-        ),
-        body: Center(
-          child: Text(
-            'The visit details could not be loaded. '
-            'Check your patient records or sync status.',
-            style: HbText.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
-
-    final visit = detail.visit;
-    final recorded = visit.recordedAt.toLocal();
-
-    final syncMessage = switch (visit.syncState) {
-      SyncState.synced => 'Sent successfully',
-      SyncState.failed => 'Upload failed · retry from Sync',
-      SyncState.queued => 'Waiting to synchronize',
-      SyncState.local => 'Saved locally · not yet queued',
-    };
-
-    final synced = visit.syncState == SyncState.synced;
+    final detail = ref.watch(visitDetailProvider(visitId)).value;
+    final online = ref.watch(isOnlineProvider);
+    if (detail == null) return const Scaffold(body: SizedBox.shrink());
+    final synced = detail.visit.syncState == SyncState.synced;
+    final recorded = detail.visit.recordedAt.toLocal();
 
     return Scaffold(
-      bottomNavigationBar: const SubPageNav(),
+      bottomNavigationBar: const SubPageNav(current: null),
       body: PageBody(
         children: [
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-
               Text(
                 'Visit saved',
-                style: HbText.headingLarge.copyWith(
-                  fontSize: 34,
-                ),
+                style: HbText.headingLarge.copyWith(fontSize: 34),
               ),
-
-              const SizedBox(height: 6),
-
+              const SizedBox(height: 4),
               Text(
                 '${detail.patient.fullName} · '
-                '${visitTypeLabel(visit.type)} · '
-                '${clock(recorded)}',
+                '${visitTypeLabel(detail.visit.type)} · ${clock(recorded)}',
                 style: HbText.bodySmall,
               ),
-
-              const SizedBox(height: 12),
-
+              const SizedBox(height: 10),
               const HbPill(
                 'Saved on this phone',
                 icon: Icons.check,
@@ -94,34 +48,21 @@ class RecordSavedScreen extends ConsumerWidget {
               ),
             ],
           ),
-
           HbCard(
             child: Column(
               children: [
                 DetailRow(
-                  'Sync status',
-                  syncMessage,
-                  valueColor: synced
-                      ? HbColors.brand
-                      : HbColors.warning,
+                  'Sent to the server',
+                  synced
+                      ? 'Yes'
+                      : (online ? 'Sending now' : 'Not yet, no signal'),
+                  valueColor: synced ? HbColors.brand : HbColors.warning,
                 ),
-
                 const SizedBox(height: 12),
-
-                DetailRow(
-                  'Patient ID',
-                  detail.patient.shortId,
-                ),
-
+                DetailRow('Patient ID', detail.patient.shortId),
                 const SizedBox(height: 12),
-
-                DetailRow(
-                  'Village',
-                  detail.patient.village,
-                ),
-
+                DetailRow('Village', detail.patient.village),
                 const SizedBox(height: 12),
-
                 DetailRow(
                   'Recorded',
                   '${fullDate(recorded)} · ${clock(recorded)}',
@@ -129,35 +70,22 @@ class RecordSavedScreen extends ConsumerWidget {
               ],
             ),
           ),
-
           Text(
-            synced
-                ? 'This visit has been synchronized '
-                    'with the server.'
-                : 'The visit is stored on this device. '
-                    'Keep the app available for synchronization '
-                    'when a connection is available.',
-            style: HbText.bodyMedium.copyWith(
-              color: HbColors.muted,
-            ),
+            'It sends by itself when the phone has signal. You can keep working; '
+            'nothing is lost if the phone turns off.',
+            style: HbText.bodyMedium.copyWith(color: HbColors.muted),
           ),
-
           HbButton.primary(
             'Back to home',
             onPressed: () {
               ref.read(tabIndexProvider.notifier).state = 0;
-              Navigator.of(context).popUntil(
-                (route) => route.isFirst,
-              );
+              Navigator.of(context).popUntil((r) => r.isFirst);
             },
           ),
-
           HbButton.secondary(
-            'View sync status',
+            'View pending records',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const SyncStatusScreen(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const SyncStatusScreen()),
             ),
           ),
         ],

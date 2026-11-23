@@ -1,8 +1,7 @@
-
 import '../models.dart';
 
-bool isUrgent(Iterable<String> signCodes) =>
-    signCodes.any((code) => code.trim().isNotEmpty);
+/// Any ticked danger sign makes the visit urgent (FR-06).
+bool isUrgent(Iterable<String> signCodes) => signCodes.isNotEmpty;
 
 typedef DangerSignSeed = ({
   String code,
@@ -11,7 +10,9 @@ typedef DangerSignSeed = ({
   String labelRw,
 });
 
-// Provisional labels. Clinical review and translation are still required.
+/// PLACEHOLDER list, same codes as server/prisma/seed.ts. Codes and English labels are to be confirmed
+/// from the Figma forms and a clinician; Kinyarwanda labels need a native speaker (left empty on purpose).
+/// Refreshed from the server on sync.
 const seedDangerSigns = <DangerSignSeed>[
   (
     code: 'HB',
@@ -19,12 +20,7 @@ const seedDangerSigns = <DangerSignSeed>[
     labelEn: 'Heavy bleeding',
     labelRw: '',
   ),
-  (
-    code: 'CV',
-    type: VisitType.maternal,
-    labelEn: 'Convulsions',
-    labelRw: '',
-  ),
+  (code: 'CV', type: VisitType.maternal, labelEn: 'Convulsions', labelRw: ''),
   (
     code: 'SH',
     type: VisitType.maternal,
@@ -43,12 +39,7 @@ const seedDangerSigns = <DangerSignSeed>[
     labelEn: 'Vomits everything',
     labelRw: '',
   ),
-  (
-    code: 'CC',
-    type: VisitType.child,
-    labelEn: 'Convulsions',
-    labelRw: '',
-  ),
+  (code: 'CC', type: VisitType.child, labelEn: 'Convulsions', labelRw: ''),
   (
     code: 'LT',
     type: VisitType.malaria,
@@ -61,12 +52,7 @@ const seedDangerSigns = <DangerSignSeed>[
     labelEn: 'Very high fever',
     labelRw: '',
   ),
-  (
-    code: 'MR',
-    type: VisitType.nutrition,
-    labelEn: 'MUAC red',
-    labelRw: '',
-  ),
+  (code: 'MR', type: VisitType.nutrition, labelEn: 'MUAC red', labelRw: ''),
   (
     code: 'OE',
     type: VisitType.nutrition,

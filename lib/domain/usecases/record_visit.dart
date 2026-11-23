@@ -1,8 +1,9 @@
-
 import '../../data/db.dart' show Visit;
 import '../entities/enums.dart';
 import '../repositories/visit_repository.dart';
 
+/// Records a reviewed visit. Empty notes are stored as none; whether the visit is urgent follows
+/// from the danger signs, so the screen cannot get it wrong.
 class RecordVisit {
   RecordVisit(this._visits);
 
@@ -14,27 +15,11 @@ class RecordVisit {
     required Map<String, Object?> answers,
     required Iterable<String> signCodes,
     String notes = '',
-  }) {
-    final id = patientId.trim();
-
-    if (id.isEmpty) {
-      throw ArgumentError('A patient must be selected.');
-    }
-
-    final codes = signCodes
-        .map((code) => code.trim())
-        .where((code) => code.isNotEmpty)
-        .toSet()
-        .toList();
-
-    final cleanedNotes = notes.trim();
-
-    return _visits.record(
-      patientId: id,
-      type: type,
-      answers: Map<String, Object?>.of(answers),
-      signCodes: codes,
-      notes: cleanedNotes.isEmpty ? null : cleanedNotes,
-    );
-  }
+  }) => _visits.record(
+    patientId: patientId,
+    type: type,
+    answers: answers,
+    signCodes: signCodes.toList(),
+    notes: notes.trim().isEmpty ? null : notes.trim(),
+  );
 }

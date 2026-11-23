@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,60 +9,21 @@ import 'patient_profile_screen.dart';
 import 'patients_controller.dart';
 import 'register_patient_screen.dart';
 
-class PatientsScreen extends ConsumerStatefulWidget {
+class PatientsScreen extends ConsumerWidget {
   const PatientsScreen({super.key});
 
   @override
-  ConsumerState<PatientsScreen> createState() =>
-      _PatientsScreenState();
-}
-
-class _PatientsScreenState extends ConsumerState<PatientsScreen> {
-  late final TextEditingController _search;
-
-  @override
-  void initState() {
-    super.initState();
-    _search = TextEditingController(
-      text: ref.read(patientsQueryProvider).text,
-    );
-  }
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  void _openPatient(String id) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => PatientProfileScreen(patientId: id),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final patients = ref.watch(allPatientsProvider).value ?? const [];
     final views = ref.watch(visiblePatientsProvider);
     final query = ref.watch(patientsQueryProvider);
     final controller = ref.read(patientsQueryProvider.notifier);
-
+    // One card per village, villages in alphabetical order.
     final byVillage = <String, List<PatientView>>{};
-
-    for (final view in views) {
-      final village = view.patient.village.trim().isEmpty
-          ? 'Village not specified'
-          : view.patient.village.trim();
-
-      byVillage.putIfAbsent(village, () => []).add(view);
+    for (final v in views) {
+      (byVillage[v.patient.village] ??= []).add(v);
     }
-
-    final villages = byVillage.keys.toList()
-      ..sort(
-        (a, b) => a.toLowerCase().compareTo(b.toLowerCase()),
-      );
+    final villages = byVillage.keys.toList()..sort();
 
     return PageBody(
       children: [
@@ -82,96 +42,69 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
             ),
           ],
         ),
-
         TextField(
-          controller: _search,
           onChanged: controller.search,
-          textInputAction: TextInputAction.search,
           style: HbText.bodyMedium.copyWith(fontSize: 17),
-          decoration: InputDecoration(
-            hintText: 'Search by name, village or ID',
-            prefixIcon: const Icon(
-              Icons.search,
-              size: 20,
-              color: HbColors.muted,
-            ),
-            suffixIcon: query.text.isNotEmpty
-                ? IconButton(
-                    tooltip: 'Clear search',
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      _search.clear();
-                      controller.search('');
-                    },
-                  )
-                : null,
-            contentPadding:
-                const EdgeInsets.symmetric(vertical: 16),
+          decoration: const InputDecoration(
+            hintText: 'Search by name or village',
+            prefixIcon: Icon(Icons.search, size: 20, color: HbColors.muted),
+            contentPadding: EdgeInsets.symmetric(vertical: 16),
           ),
         ),
-
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final (filter, label) in const [
+            for (final (f, label) in const [
               (PatientFilter.all, 'All'),
               (PatientFilter.followUp, 'Follow-up due'),
               (PatientFilter.urgent, 'Urgent'),
             ])
               ChoiceChipPill(
                 label: label,
-                selected: query.filter == filter,
-                onTap: () => controller.filterBy(filter),
+                selected: query.filter == f,
+                onTap: () => controller.filterBy(f),
               ),
           ],
         ),
-
         if (views.isEmpty)
           HbCard(
             padding: const EdgeInsets.all(22),
             child: Text(
               patients.isEmpty
                   ? 'No patients yet. Register your first patient.'
-                  : 'No patients match your search or filter.',
-              style: HbText.bodyMedium.copyWith(
-                color: HbColors.muted,
-              ),
+                  : 'No patients match.',
+              style: HbText.bodyMedium.copyWith(color: HbColors.muted),
             ),
           ),
-
         for (final village in villages)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding:
-                    const EdgeInsets.only(left: 4, bottom: 8),
+                padding: const EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
                   '$village · ${byVillage[village]!.length}',
-                  style: HbText.bodySmall.copyWith(
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: HbText.bodySmall.copyWith(fontWeight: FontWeight.w500),
                 ),
               ),
               HbCard(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Column(
                   children: [
-                    for (final (index, view)
-                        in byVillage[village]!.indexed) ...[
-                      if (index > 0)
+                    for (final (i, v) in byVillage[village]!.indexed) ...[
+                      if (i > 0)
                         const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 18,
-                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 18),
                           child: HbDivider(),
                         ),
                       PatientRow(
-                        view: view,
-                        onTap: () => _openPatient(
-                          view.patient.id,
+                        view: v,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) =>
+                                PatientProfileScreen(patientId: v.patient.id),
+                          ),
                         ),
                       ),
                     ],
@@ -180,7 +113,6 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
               ),
             ],
           ),
-
         HbButton.primary(
           'Register patient',
           icon: Icons.add,
@@ -195,12 +127,9 @@ class _PatientsScreenState extends ConsumerState<PatientsScreen> {
   }
 }
 
+/// Avatar coloured by status, name, details, and one status word when it means something.
 class PatientRow extends StatelessWidget {
-  const PatientRow({
-    super.key,
-    required this.view,
-    required this.onTap,
-  });
+  const PatientRow({super.key, required this.view, required this.onTap});
 
   final PatientView view;
   final VoidCallback onTap;
@@ -208,70 +137,41 @@ class PatientRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = view.status;
-    final (_, color, label) = StatusChip.style(status);
-
-    return Semantics(
-      button: true,
-      label: '${view.patient.fullName}, '
-          '${view.ageSex}, $label',
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            16, 12, 12, 12,
-          ),
-          child: Row(
-            children: [
-              HbAvatar(
-                view.patient.fullName,
-                kind: avatarFor(status),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      view.patient.fullName,
-                      style: HbText.headingSmall,
-                    ),
-                    Text(
-                      view.ageSex.isEmpty
-                          ? view.patient.shortId
-                          : view.ageSex,
-                      style: HbText.bodySmall,
-                    ),
-                    Text(
-                      'Last visit: ${view.when}',
-                      style: HbText.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              if (status != StatusKind.stable) ...[
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    label,
-                    style: HbText.labelMedium.copyWith(
-                      color: color,
-                    ),
+    final (_, color, word) = StatusChip.style(status);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Row(
+          children: [
+            HbAvatar(view.patient.fullName, kind: avatarFor(status)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(view.patient.fullName, style: HbText.headingSmall),
+                  Text(
+                    view.ageSex.isEmpty ? view.patient.shortId : view.ageSex,
+                    style: HbText.bodySmall,
                   ),
-                ),
-              ],
-              const Icon(
-                Icons.chevron_right,
-                color: HbColors.chevron,
+                  Text('Last visit: ${view.when}', style: HbText.bodySmall),
+                ],
               ),
+            ),
+            if (status != StatusKind.stable) ...[
+              const SizedBox(width: 8),
+              Text(word, style: HbText.labelMedium.copyWith(color: color)),
             ],
-          ),
+            const Icon(Icons.chevron_right, color: HbColors.chevron),
+          ],
         ),
       ),
     );
   }
 }
 
+/// A choice among a few (filters, visit types): dark pill when chosen, white when not.
 class ChoiceChipPill extends StatelessWidget {
   const ChoiceChipPill({
     super.key,
@@ -285,39 +185,29 @@ class ChoiceChipPill extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: selected,
-      child: Material(
-        color: selected ? HbColors.ink : HbColors.white,
-        shape: const StadiumBorder(),
-        child: InkWell(
-          customBorder: const StadiumBorder(),
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints:
-                const BoxConstraints(minHeight: 44),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 11,
-              ),
-              child: Text(
-                label,
-                style: HbText.bodyMedium.copyWith(
-                  color: selected
-                      ? Colors.white
-                      : HbColors.ink,
-                  fontWeight: selected
-                      ? FontWeight.w600
-                      : FontWeight.w400,
-                ),
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    button: true,
+    child: Material(
+      color: selected ? HbColors.ink : HbColors.white,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+            child: Text(
+              label,
+              style: HbText.bodyMedium.copyWith(
+                color: selected ? Colors.white : HbColors.ink,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

@@ -1,8 +1,5 @@
-
+// The domain enums, plus the one that only the storage layer needs.
 export '../domain/entities/enums.dart';
 
-// Operations queued for synchronization with the server.
-enum OutboxOp {
-  upsert,
-  delete,
-}
+/// What an outbox row asks the server to do.
+enum OutboxOp { upsert, delete }

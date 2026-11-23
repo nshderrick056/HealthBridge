@@ -1,9 +1,10 @@
-
 import 'package:drift/drift.dart' show Value;
 
 import '../../data/db.dart' show Patient;
 import '../repositories/patient_repository.dart';
 
+/// Registers a new patient, or saves changes to [editing]. Cleans the form's raw text: trims names,
+/// reads the age as whole years and treats an empty phone as none.
 class SavePatient {
   SavePatient(this._patients);
 
@@ -17,50 +18,21 @@ class SavePatient {
     String age = '',
     String phone = '',
   }) {
-    final name = fullName.trim();
-    final location = village.trim();
-    final ageText = age.trim();
-    final phoneText = phone.trim();
-
-    if (name.isEmpty || location.isEmpty) {
-      throw ArgumentError(
-        'Patient name and village are required.',
-      );
-    }
-
-    final ageEstimate =
-        ageText.isEmpty ? null : int.tryParse(ageText);
-
-    if (ageText.isNotEmpty &&
-        (ageEstimate == null ||
-            ageEstimate < 0 ||
-            ageEstimate > 130)) {
-      throw ArgumentError(
-        'Age must be between 0 and 130 years.',
-      );
-    }
-
-    if (sex != null && sex != 'M' && sex != 'F') {
-      throw ArgumentError('Invalid patient sex.');
-    }
-
-    final phoneOrNull =
-        phoneText.isEmpty ? null : phoneText;
-
+    final ageEstimate = int.tryParse(age.trim());
+    final phoneOrNull = phone.trim().isEmpty ? null : phone.trim();
     if (editing == null) {
       return _patients.create(
-        fullName: name,
-        village: location,
+        fullName: fullName.trim(),
+        village: village.trim(),
         sex: sex,
         ageEstimate: ageEstimate,
         phone: phoneOrNull,
       );
     }
-
     return _patients.update(
       editing.copyWith(
-        fullName: name,
-        village: location,
+        fullName: fullName.trim(),
+        village: village.trim(),
         sex: Value(sex),
         ageEstimate: Value(ageEstimate),
         phone: Value(phoneOrNull),
@@ -69,16 +41,13 @@ class SavePatient {
   }
 }
 
+/// The app's "delete": the record and its visits are kept, and the archive can be undone.
 class ArchivePatient {
   ArchivePatient(this._patients);
 
   final PatientRepository _patients;
 
-  Future<Patient> call(Patient patient) {
-    return _patients.archive(patient);
-  }
+  Future<Patient> call(Patient p) => _patients.archive(p);
 
-  Future<Patient> undo(Patient patient) {
-    return _patients.restore(patient);
-  }
+  Future<Patient> undo(Patient p) => _patients.restore(p);
 }

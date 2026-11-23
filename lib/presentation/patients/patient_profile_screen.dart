@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,155 +13,76 @@ import 'register_patient_screen.dart';
 import 'visit_detail_screen.dart';
 
 class PatientProfileScreen extends ConsumerWidget {
-  const PatientProfileScreen({
-    super.key,
-    required this.patientId,
-  });
+  const PatientProfileScreen({super.key, required this.patientId});
 
   final String patientId;
 
+  /// Asks first, then archives, leaves the profile and offers Undo.
   Future<void> _archive(
     BuildContext context,
     WidgetRef ref,
     Patient patient,
   ) async {
-    final confirmed = await showDialog<bool>(
+    final sure = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('Archive this patient?'),
         content: Text(
-          '${patient.fullName} will be removed from '
-          'the active patient list. Their visit history '
-          'will be preserved.',
+          '${patient.fullName} will be hidden from your lists. '
+          'Their visits are kept, and you can undo this straight away.',
         ),
         actions: [
           TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(false),
+            onPressed: () => Navigator.of(context).pop(false),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () =>
-                Navigator.of(dialogContext).pop(true),
+            onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Archive'),
           ),
         ],
       ),
     );
-
-    if (confirmed != true || !context.mounted) return;
-
-    final actions = ref.read(patientActionsProvider);
+    if (sure != true || !context.mounted) return;
+    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
-
+    final actions = ref.read(patientActionsProvider);
     try {
       final archived = await actions.archive(patient);
-
-      if (!context.mounted) return;
-
-      Navigator.of(context).pop();
-
+      navigator.pop();
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${patient.fullName} archived.'),
+          content: Text('${patient.fullName} archived'),
           action: SnackBarAction(
             label: 'Undo',
-            onPressed: () async {
-              try {
-                await actions.restore(archived);
-              } catch (_) {
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Could not restore the patient.',
-                    ),
-                  ),
-                );
-              }
-            },
+            onPressed: () => actions.restore(archived),
           ),
         ),
       );
-    } catch (_) {
-      if (!context.mounted) return;
-
+    } on Exception {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not archive the patient. Try again.',
-          ),
-        ),
+        const SnackBar(content: Text('Could not archive. Try again.')),
       );
     }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final patientResult = ref.watch(allPatientsProvider);
-    final visitResult = ref.watch(allVisitsProvider);
-
-    if (patientResult.isLoading || visitResult.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    final patients = patientResult.value ?? const [];
-    final visits = visitResult.value ?? const [];
-
-    Patient? patient;
-    for (final item in patients) {
-      if (item.id == patientId) {
-        patient = item;
-        break;
-      }
-    }
-
-    if (patient == null) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Patient profile'),
-        ),
-        body: Center(
-          child: Text(
-            'This patient could not be found.',
-            style: HbText.bodyMedium,
-          ),
-        ),
-      );
-    }
-
+    final patients = ref.watch(allPatientsProvider).value ?? const [];
+    final visits = ref.watch(allVisitsProvider).value ?? const [];
+    final showAll = ref.watch(historyExpandedProvider(patientId));
+    void toggleHistory() =>
+        ref.read(historyExpandedProvider(patientId).notifier).toggle();
+    final found = patients.where((p) => p.id == patientId);
+    if (found.isEmpty) return const Scaffold(body: SizedBox.shrink());
     final view = PatientView(
-      patient,
-      visits.where(
-        (visit) => visit.patientId == patientId,
-      ).toList(),
+      found.first,
+      visits.where((v) => v.patientId == patientId).toList(),
     );
-
     final latest = view.latest;
+    final shown = view.visits.take(showAll ? 50 : 3).toList();
     final due = latest?.followUpOn;
-
-    final expanded = ref.watch(
-      historyExpandedProvider(patientId),
-    );
-
-    final history = expanded
-        ? view.visits
-        : view.visits.take(3).toList();
-
-    final firstName = patient.fullName.trim().isEmpty
-        ? 'patient'
-        : patient.fullName.trim().split(RegExp(r'\s+')).first;
-
-    void open(Widget screen) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => screen,
-        ),
-      );
-    }
+    final first = view.patient.fullName.trim().split(RegExp(r'\s+')).first;
 
     return Scaffold(
       body: PageBody(
@@ -172,61 +92,56 @@ class PatientProfileScreen extends ConsumerWidget {
               HbCircleButton(
                 icon: Icons.chevron_left,
                 tooltip: 'Back',
-                onPressed: () =>
-                    Navigator.of(context).maybePop(),
+                onPressed: () => Navigator.of(context).maybePop(),
               ),
               const Spacer(),
               HbCircleButton(
                 icon: Icons.edit_outlined,
                 tooltip: 'Edit patient',
-                onPressed: () => open(
-                  RegisterPatientScreen(patient: patient),
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        RegisterPatientScreen(patient: view.patient),
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
               HbCircleButton(
                 icon: Icons.archive_outlined,
                 tooltip: 'Archive patient',
-                onPressed: () =>
-                    _archive(context, ref, patient!),
+                onPressed: () => _archive(context, ref, view.patient),
               ),
             ],
           ),
-
           HbGradientCard(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     HbAvatar(
-                      patient.fullName,
+                      view.patient.fullName,
                       kind: AvatarKind.lime,
                       size: 56,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            patient.fullName,
-                            style:
-                                HbText.headingLarge.copyWith(
+                            view.patient.fullName,
+                            style: HbText.headingLarge.copyWith(
                               color: Colors.white,
                               fontSize: 24,
                             ),
                           ),
                           Text(
                             [
-                              if (view.ageSex.isNotEmpty)
-                                view.ageSex,
-                              patient.village,
+                              if (view.ageSex.isNotEmpty) view.ageSex,
+                              view.patient.village,
                             ].join(' · '),
-                            style:
-                                HbText.bodySmall.copyWith(
+                            style: HbText.bodySmall.copyWith(
                               color: HbColors.onBrand,
                             ),
                           ),
@@ -235,22 +150,14 @@ class PatientProfileScreen extends ConsumerWidget {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: 14),
-                const Divider(
-                  height: 1,
-                  color: Color(0x33FFFFFF),
-                ),
+                const Divider(height: 1, color: Color(0x33FFFFFF)),
                 const SizedBox(height: 12),
-
                 Text(
                   switch (view.status) {
-                    StatusKind.urgent =>
-                      'Urgent at the last visit',
-                    StatusKind.attention =>
-                      'Needs attention',
-                    _ when due != null =>
-                      'Follow-up scheduled ${fullDate(due)}',
+                    StatusKind.urgent => 'Urgent at the last visit',
+                    StatusKind.attention => 'Needs attention',
+                    _ when due != null => 'Follow-up due ${fullDate(due)}',
                     _ => 'Last visit: ${view.when}',
                   },
                   style: HbText.headingSmall.copyWith(
@@ -259,108 +166,73 @@ class PatientProfileScreen extends ConsumerWidget {
                         : HbColors.lime,
                   ),
                 ),
-
-                const SizedBox(height: 4),
-
                 Text(
                   latest == null
-                      ? 'No visits yet · ID ${patient.shortId}'
-                      : '${visitTypeLabel(latest.type)} · '
-                          'ID ${patient.shortId}',
-                  style: HbText.bodySmall.copyWith(
-                    color: HbColors.onBrand,
-                  ),
+                      ? 'No visits yet · ID ${view.patient.shortId}'
+                      : '${visitTypeLabel(latest.type)} · ID ${view.patient.shortId}',
+                  style: HbText.bodySmall.copyWith(color: HbColors.onBrand),
                 ),
               ],
             ),
           ),
-
           HbButton.primary(
-            'Record visit for $firstName',
+            'Record visit for $first',
             icon: Icons.add,
-            onPressed: () => open(
-              RecordVisitScreen(patientId: patientId),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => RecordVisitScreen(patientId: patientId),
+              ),
             ),
           ),
-
-          if (history.isEmpty)
-            HbCard(
-              child: Text(
-                'No visits have been recorded for this patient.',
-                style: HbText.bodyMedium,
-              ),
-            )
-          else ...[
+          if (shown.isNotEmpty) ...[
             SectionHeading(
               'Visits',
               action: view.visits.length > 3
-                  ? expanded
-                      ? 'Show less'
-                      : 'View all'
+                  ? (showAll ? 'Show less' : 'View all')
                   : null,
-              onAction: () => ref
-                  .read(
-                    historyExpandedProvider(patientId)
-                        .notifier,
-                  )
-                  .toggle(),
+              onAction: toggleHistory,
             ),
-
             HbCard(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Column(
                 children: [
-                  for (final (index, visit)
-                      in history.indexed) ...[
-                    if (index > 0)
+                  for (final (i, v) in shown.indexed) ...[
+                    if (i > 0)
                       const Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 18,
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 18),
                         child: HbDivider(),
                       ),
                     InkWell(
-                      onTap: () => open(
-                        VisitDetailScreen(
-                          visitId: visit.id,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => VisitDetailScreen(visitId: v.id),
                         ),
                       ),
                       child: Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(
-                          18, 12, 18, 12,
-                        ),
+                        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '${fullDate(visit.recordedAt.toLocal())} '
-                                    '· ${visitTypeLabel(visit.type)}',
-                                    style:
-                                        HbText.headingSmall,
+                                    '${fullDate(v.recordedAt.toLocal())} · ${visitTypeLabel(v.type)}',
+                                    style: HbText.headingSmall,
                                   ),
                                 ),
-                                if (visit.isUrgent)
+                                if (v.isUrgent)
                                   Text(
                                     'Urgent',
-                                    style:
-                                        HbText.labelMedium
-                                            .copyWith(
+                                    style: HbText.labelMedium.copyWith(
                                       color: HbColors.red,
                                     ),
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 4),
                             Text(
-                              visit.notes?.trim().isNotEmpty ==
-                                      true
-                                  ? visit.notes!.trim()
+                              v.notes?.isNotEmpty == true
+                                  ? v.notes!
                                   : 'No notes recorded.',
                               style: HbText.bodySmall,
                             ),
@@ -375,8 +247,7 @@ class PatientProfileScreen extends ConsumerWidget {
           ],
         ],
       ),
-      bottomNavigationBar:
-          const SubPageNav(current: 1),
+      bottomNavigationBar: const SubPageNav(current: 1),
     );
   }
 }

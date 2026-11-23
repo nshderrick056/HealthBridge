@@ -1,24 +1,9 @@
+// Enums of the domain, stored as text in SQLite. The names match the server's enums and Backend Schema 2.
 
-// Visit categories supported by HealthBridge.
-enum VisitType {
-  maternal,
-  child,
-  malaria,
-  nutrition,
-}
+enum VisitType { maternal, child, malaria, nutrition }
 
-// Local record synchronization status.
-enum SyncState {
-  local,
-  queued,
-  synced,
-  failed,
-}
+/// Per-record upload status shown in the UI: local (saved, not queued), queued, synced, failed.
+enum SyncState { local, queued, synced, failed }
 
-// Progress of an urgent alert.
-enum DispatchState {
-  sending,
-  sentSms,
-  confirmed,
-  unconfirmed,
-}
+/// Urgent-alert progress: sending -> sent_sms -> confirmed | unconfirmed.
+enum DispatchState { sending, sentSms, confirmed, unconfirmed }

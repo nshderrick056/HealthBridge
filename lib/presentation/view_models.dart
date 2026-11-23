@@ -1,11 +1,10 @@
-
 import 'dart:convert';
 
 import '../core/widgets/widgets.dart';
 import '../data/db.dart';
 import '../data/models.dart';
 
-String visitTypeLabel(VisitType type) => switch (type) {
+String visitTypeLabel(VisitType t) => switch (t) {
   VisitType.maternal => 'Maternal Health',
   VisitType.child => 'Child Health',
   VisitType.malaria => 'Malaria',
@@ -13,143 +12,87 @@ String visitTypeLabel(VisitType type) => switch (type) {
 };
 
 const months = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
-String two(int number) => number.toString().padLeft(2, '0');
+String two(int n) => n.toString().padLeft(2, '0');
+String dayMonth(DateTime d) => '${d.day} ${months[d.month - 1]}';
+String fullDate(DateTime d) => '${d.day} ${months[d.month - 1]} ${d.year}';
+String clock(DateTime d) => '${two(d.hour)}:${two(d.minute)}';
 
-String dayMonth(DateTime date) =>
-    '${date.day} ${months[date.month - 1]}';
+bool sameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
 
-String fullDate(DateTime date) =>
-    '${date.day} ${months[date.month - 1]} ${date.year}';
-
-String clock(DateTime date) =>
-    '${two(date.hour)}:${two(date.minute)}';
-
-bool sameDay(DateTime first, DateTime second) =>
-    first.year == second.year &&
-    first.month == second.month &&
-    first.day == second.day;
-
-String relativeDay(DateTime date, [DateTime? now]) {
-  final today = (now ?? DateTime.now()).toLocal();
-  final target = date.toLocal();
-
-  if (sameDay(target, today)) return 'Today';
-
-  final yesterday = DateTime(
-    today.year,
-    today.month,
-    today.day - 1,
-  );
-
-  if (sameDay(target, yesterday)) return 'Yesterday';
-
-  return dayMonth(target);
+String relativeDay(DateTime d, [DateTime? now]) {
+  final today = now ?? DateTime.now();
+  if (sameDay(d, today)) return 'Today';
+  if (sameDay(d, today.subtract(const Duration(days: 1)))) return 'Yesterday';
+  return dayMonth(d);
 }
 
+/// The visit form's "General condition" tag that flags a patient, stored as `answers.general_condition`.
 const needsAttention = 'Needs attention';
 
+/// A patient with what the list and profile screens derive from their visits.
 class PatientView {
   PatientView(this.patient, List<Visit> visits)
-      : visits = List<Visit>.of(visits)
-          ..sort(
-            (a, b) => b.recordedAt.compareTo(a.recordedAt),
-          );
+    : visits = ([...visits]
+        ..sort((a, b) => b.recordedAt.compareTo(a.recordedAt)));
 
   final Patient patient;
-  final List<Visit> visits;
+  final List<Visit> visits; // newest first
 
-  Visit? get latest =>
-      visits.isEmpty ? null : visits.first;
+  Visit? get latest => visits.isEmpty ? null : visits.first;
 
+  /// From the latest visit: danger signs, then the CHW's "Needs attention" tag, then a due follow-up.
   StatusKind get status {
-    final visit = latest;
-
-    if (visit == null) return StatusKind.stable;
-
-    if (visit.isUrgent) return StatusKind.urgent;
-
-    try {
-      final answers = jsonDecode(visit.answersJson);
-
-      if (answers is Map &&
-          answers['general_condition'] == needsAttention) {
-        return StatusKind.attention;
-      }
-    } on FormatException {
-      // Invalid answers should not prevent displaying the patient.
+    final v = latest;
+    if (v == null) return StatusKind.stable;
+    if (v.isUrgent) return StatusKind.urgent;
+    final answers = jsonDecode(v.answersJson);
+    if (answers is Map && answers['general_condition'] == needsAttention) {
+      return StatusKind.attention;
     }
-
-    final followUp = visit.followUpOn;
-
-    if (followUp != null &&
-        !followUp.isAfter(DateTime.now())) {
-      return StatusKind.followUp;
-    }
-
+    final due = v.followUpOn;
+    if (due != null && !due.isAfter(DateTime.now())) return StatusKind.followUp;
     return StatusKind.stable;
   }
 
   String get ageSex {
-    final birthDate = patient.birthDate;
-    int? age = patient.ageEstimate;
-
-    if (birthDate != null) {
-      final today = DateTime.now();
-
-      age = today.year - birthDate.year;
-
-      if (today.month < birthDate.month ||
-          (today.month == birthDate.month &&
-              today.day < birthDate.day)) {
-        age--;
-      }
-    }
-
-    final sex = switch (patient.sex) {
+    final p = patient;
+    final age = p.birthDate != null
+        ? DateTime.now().difference(p.birthDate!).inDays ~/ 365
+        : p.ageEstimate;
+    final sex = switch (p.sex) {
       'F' => 'Female',
       'M' => 'Male',
       _ => null,
     };
-
-    return [
-      if (age != null && age >= 0) '$age years',
-      if (sex != null) sex,
-    ].join(' · ');
+    return [if (age != null) '$age years', ?sex].join(' \u00B7 ');
   }
 
-  String get when {
-    final visit = latest;
-
-    return visit == null
-        ? 'No visits'
-        : relativeDay(visit.recordedAt);
-  }
+  String get when =>
+      latest == null ? 'No visits' : relativeDay(latest!.recordedAt.toLocal());
 }
 
 List<PatientView> buildPatientViews(
   List<Patient> patients,
   List<Visit> visits,
-) {
-  final visitsByPatient = <String, List<Visit>>{};
-
-  for (final visit in visits) {
-    visitsByPatient
-        .putIfAbsent(visit.patientId, () => <Visit>[])
-        .add(visit);
-  }
-
-  return [
-    for (final patient in patients)
-      PatientView(
-        patient,
-        visitsByPatient[patient.id] ?? const <Visit>[],
-      ),
-  ];
-}
+) => [
+  for (final p in patients)
+    PatientView(p, visits.where((v) => v.patientId == p.id).toList()),
+];
 
 class SyncCounts {
   const SyncCounts({
@@ -157,40 +100,21 @@ class SyncCounts {
     required this.pending,
     required this.failed,
   });
-
   final int synced;
   final int pending;
   final int failed;
 }
 
-SyncCounts syncCounts(
-  List<Patient> patients,
-  List<Visit> visits,
-) {
-  var synced = 0;
-  var pending = 0;
-  var failed = 0;
-
+SyncCounts syncCounts(List<Patient> patients, List<Visit> visits) {
   final states = [
-    ...patients.map((patient) => patient.syncState),
-    ...visits.map((visit) => visit.syncState),
+    ...patients.map((p) => p.syncState),
+    ...visits.map((v) => v.syncState),
   ];
-
-  for (final state in states) {
-    switch (state) {
-      case SyncState.synced:
-        synced++;
-      case SyncState.local:
-      case SyncState.queued:
-        pending++;
-      case SyncState.failed:
-        failed++;
-    }
-  }
-
   return SyncCounts(
-    synced: synced,
-    pending: pending,
-    failed: failed,
+    synced: states.where((s) => s == SyncState.synced).length,
+    pending: states
+        .where((s) => s == SyncState.local || s == SyncState.queued)
+        .length,
+    failed: states.where((s) => s == SyncState.failed).length,
   );
 }

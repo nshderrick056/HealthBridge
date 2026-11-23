@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,125 +7,62 @@ import '../../data/providers.dart';
 import '../../sync/sync_service.dart';
 
 class RegisterPatientState {
-  const RegisterPatientState({
-    this.sex,
-    this.consent = false,
-    this.busy = false,
-  });
+  const RegisterPatientState({this.sex, this.consent = false});
 
   final String? sex;
   final bool consent;
-  final bool busy;
-
-  RegisterPatientState copyWith({
-    String? Function()? sex,
-    bool? consent,
-    bool? busy,
-  }) {
-    return RegisterPatientState(
-      sex: sex != null ? sex() : this.sex,
-      consent: consent ?? this.consent,
-      busy: busy ?? this.busy,
-    );
-  }
 }
 
-class RegisterPatientController
-    extends Notifier<RegisterPatientState> {
+/// The register / edit patient form's choices, and saving the patient.
+/// Keyed by the patient being edited; null registers a new one.
+class RegisterPatientController extends Notifier<RegisterPatientState> {
   RegisterPatientController(this.editing);
 
   final Patient? editing;
 
+  // An existing patient already gave consent when they were registered.
   @override
-  RegisterPatientState build() {
-    return RegisterPatientState(
-      sex: editing?.sex,
-      consent: editing != null,
-    );
-  }
+  RegisterPatientState build() =>
+      RegisterPatientState(sex: editing?.sex, consent: editing != null);
 
-  void setSex(String sex) {
-    if (state.busy) return;
-    if (sex != 'F' && sex != 'M') return;
+  void setSex(String sex) =>
+      state = RegisterPatientState(sex: sex, consent: state.consent);
 
-    state = state.copyWith(sex: () => sex);
-  }
+  void setConsent(bool consent) =>
+      state = RegisterPatientState(sex: state.sex, consent: consent);
 
-  void setConsent(bool consent) {
-    if (state.busy || editing != null) return;
-
-    state = state.copyWith(consent: consent);
-  }
-
+  /// Saves on the phone (with its outbox row) and starts an upload if online.
   Future<void> save({
     required String fullName,
     required String village,
     required String age,
     required String phone,
   }) async {
-    if (state.busy) return;
-
-    if (!state.consent) {
-      throw StateError(
-        'Patient consent is required before registration.',
-      );
-    }
-
-    final name = fullName.trim();
-    final location = village.trim();
-
-    if (name.isEmpty || location.isEmpty) {
-      throw ArgumentError(
-        'Patient name and village are required.',
-      );
-    }
-
-    state = state.copyWith(busy: true);
-
-    try {
-      await ref.read(savePatientProvider).call(
-            editing: editing,
-            fullName: name,
-            village: location,
-            sex: state.sex,
-            age: age.trim(),
-            phone: phone.trim(),
-          );
-
-      // Local saving succeeds independently of network availability.
-      final syncNow = ref.read(syncNowProvider);
-      unawaited(
-        syncNow().catchError(
-          (Object error, StackTrace stackTrace) {},
-        ),
-      );
-    } finally {
-      if (ref.mounted) {
-        state = state.copyWith(busy: false);
-      }
-    }
+    await ref
+        .read(savePatientProvider)
+        .call(
+          editing: editing,
+          fullName: fullName,
+          village: village,
+          sex: state.sex,
+          age: age,
+          phone: phone,
+        );
+    unawaited(ref.read(syncNowProvider)());
   }
 }
 
-final registerPatientProvider =
-    NotifierProvider.autoDispose.family<
-      RegisterPatientController,
-      RegisterPatientState,
-      Patient?
-    >(
+final registerPatientProvider = NotifierProvider.autoDispose
+    .family<RegisterPatientController, RegisterPatientState, Patient?>(
       RegisterPatientController.new,
     );
 
-String? validateAge(String? value) {
-  final text = value?.trim() ?? '';
-
+/// Age is optional; when given it must be whole years, 0 to 130 (the server's limit).
+String? validateAge(String? v) {
+  final text = v?.trim() ?? '';
   if (text.isEmpty) return null;
-
-  final age = int.tryParse(text);
-
-  if (age == null || age < 0 || age > 130) {
-    return 'Enter the age in whole years (0 to 130)';
-  }
-
-  return null;
+  final n = int.tryParse(text);
+  return n == null || n < 0 || n > 130
+      ? 'Enter the age in whole years (0 to 130)'
+      : null;
 }

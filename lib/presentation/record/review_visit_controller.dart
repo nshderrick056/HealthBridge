@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,63 +7,36 @@ import '../../data/providers.dart';
 import '../../sync/sync_service.dart';
 import 'visit_form.dart';
 
+/// Submits a reviewed visit. The state is "saving", which disables the Submit button.
 class SubmitVisitController extends Notifier<bool> {
   @override
   bool build() => false;
 
-  Future<Visit> submit(
-    VisitForm form,
-    String draftKey,
-  ) async {
-    if (state) {
-      throw StateError(
-        'A visit is already being saved.',
-      );
-    }
-
+  /// Saves the visit (with its outbox row), drops the draft and starts an upload if online.
+  Future<Visit> submit(VisitForm f, String draftKey) async {
     state = true;
-
     try {
       final visit = await ref
           .read(recordVisitUseCaseProvider)
           .call(
-            patientId: form.patient.id,
-            type: form.type,
-            answers: form.answers,
-            signCodes: form.signs,
-            notes: form.notes,
+            patientId: f.patient.id,
+            type: f.type,
+            answers: f.answers,
+            signCodes: f.signs,
+            notes: f.notes,
           );
-
-      // The visit is already saved locally at this point.
-      final drafts = ref.read(draftsRepositoryProvider);
-
-      try {
-        await drafts.delete(draftKey);
-      } catch (_) {
-        // Draft cleanup can be retried independently.
-      }
-
-      final syncNow = ref.read(syncNowProvider);
-
-      unawaited(
-        syncNow().catchError(
-          (Object error, StackTrace stackTrace) {},
-        ),
-      );
-
+      await ref.read(draftsRepositoryProvider).delete(draftKey);
+      // Upload now if online; the outbox keeps it otherwise.
+      unawaited(ref.read(syncNowProvider)());
       return visit;
-    } finally {
-      if (ref.mounted) {
-        state = false;
-      }
+    } catch (_) {
+      if (ref.mounted) state = false;
+      rethrow;
     }
   }
 }
 
 final submitVisitProvider =
-    NotifierProvider.autoDispose<
-      SubmitVisitController,
-      bool
-    >(
+    NotifierProvider.autoDispose<SubmitVisitController, bool>(
       SubmitVisitController.new,
     );

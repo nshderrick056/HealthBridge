@@ -1,7 +1,7 @@
-
 import '../../data/db.dart';
 import '../../data/models.dart';
 
+/// What the CHW has entered so far. Passed from the form to the review screen and autosaved as a draft.
 class VisitForm {
   VisitForm({
     required this.patient,
@@ -15,7 +15,6 @@ class VisitForm {
   }) : signs = signs ?? <String>{};
 
   final Patient patient;
-
   VisitType type;
   String symptoms;
   double? temperature;
@@ -24,65 +23,27 @@ class VisitForm {
   Set<String> signs;
   DateTime? followUpOn;
 
-  Map<String, Object?> toDraft() {
-    return {
-      'type': type.name,
-      'symptoms': symptoms,
-      'temperature': temperature,
-      'condition': condition,
-      'notes': notes,
-      'signs': signs.toList(),
-      if (followUpOn != null)
-        'followUpOn': followUpOn!.toIso8601String(),
-    };
+  Map<String, Object?> toDraft() => {
+    'type': type.name,
+    'symptoms': symptoms,
+    'temperature': temperature,
+    'condition': condition,
+    'notes': notes,
+    'signs': signs.toList(),
+  };
+
+  void restore(Map<String, Object?> d) {
+    type = VisitType.values.asNameMap()[d['type']] ?? type;
+    symptoms = d['symptoms'] as String? ?? '';
+    temperature = (d['temperature'] as num?)?.toDouble();
+    condition = d['condition'] as String? ?? 'Stable';
+    notes = d['notes'] as String? ?? '';
+    signs = {...((d['signs'] as List?)?.cast<String>() ?? const <String>[])};
   }
 
-  void restore(Map<String, Object?> draft) {
-    final savedType = draft['type'];
-
-    if (savedType is String) {
-      type = VisitType.values.asNameMap()[savedType] ?? type;
-    }
-
-    final savedSymptoms = draft['symptoms'];
-    symptoms = savedSymptoms is String ? savedSymptoms : '';
-
-    final savedTemperature = draft['temperature'];
-
-    if (savedTemperature is num) {
-      temperature = savedTemperature.toDouble();
-    } else if (savedTemperature is String) {
-      temperature = double.tryParse(savedTemperature.trim());
-    } else {
-      temperature = null;
-    }
-
-    final savedCondition = draft['condition'];
-    condition = savedCondition is String
-        ? savedCondition
-        : 'Stable';
-
-    final savedNotes = draft['notes'];
-    notes = savedNotes is String ? savedNotes : '';
-
-    final savedSigns = draft['signs'];
-    signs = savedSigns is List
-        ? savedSigns.whereType<String>().toSet()
-        : <String>{};
-
-    final savedFollowUp = draft['followUpOn'];
-
-    followUpOn = savedFollowUp is String
-        ? DateTime.tryParse(savedFollowUp)
-        : null;
-  }
-
-  Map<String, Object?> get answers {
-    return {
-      'symptoms': symptoms,
-      if (temperature != null)
-        'temperature': temperature,
-      'general_condition': condition,
-    };
-  }
+  Map<String, Object?> get answers => {
+    'symptoms': symptoms,
+    if (temperature != null) 'temperature': temperature,
+    'general_condition': condition,
+  };
 }
