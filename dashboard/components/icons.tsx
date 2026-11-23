@@ -55,3 +55,10 @@ export const KeyIcon = ({ className = 'size-4' }) => (
     <path d="m21 2-9.6 9.6M15.5 7.5l2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
   </svg>
 );
+
+export const UserPlusIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <circle cx="9" cy="8" r="4" />
+    <path d="M2 21a7 7 0 0 1 14 0M19 8v6M22 11h-6" />
+  </svg>
+);
