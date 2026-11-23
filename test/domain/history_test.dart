@@ -57,3 +57,18 @@ void main() {
           'isUrgent': false,
           'isPartial': true,
           'dangerSigns': [],
+          'temperature': null,
+          'condition': null,
+          'symptoms': null,
+          'notes': null,
+          'followUpOn': null,
+          'patient': {'id': 'p2', 'shortId': 'P0007', 'name': null},
+        },
+      ],
+    });
+    expect(h.chw.name, 'Claudine M.');
+    expect(h.visits.single.patientId, 'p2');
+    expect(h.visits.single.patientName, isNull);
+    expect(h.visits.single.isPartial, isTrue);
+  });
+}
