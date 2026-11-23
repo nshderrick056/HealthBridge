@@ -95,3 +95,16 @@ function claimsOf(idToken: string): { role?: string; mc?: boolean } {
     return {};
   }
 }
+
+/** A new ID token, or null when the refresh token is expired, revoked or the user disabled. */
+export async function refreshAccess(refreshToken: string): Promise<string | null> {
+  const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${firebaseKey()}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }).toString(),
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const body = (await res.json()) as { id_token?: string };
+  return body.id_token ?? null;
+}
