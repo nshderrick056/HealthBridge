@@ -17,3 +17,7 @@ ApiClient _unused() => ApiClient(
   session: () => null,
   onSession: (_) {},
 );
+
+class _FakeSupervision extends SupervisionRepository {
+  _FakeSupervision() : super(_unused());
+  final moves = <(String, AlertStatus, String?)>[];
