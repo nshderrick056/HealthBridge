@@ -11,3 +11,9 @@ import 'package:health_bridge/presentation/admin/admin_screens.dart';
 import 'package:health_bridge/presentation/auth/change_secret_screen.dart';
 import 'package:health_bridge/presentation/supervisor/case_screen.dart';
 import 'package:health_bridge/presentation/supervisor/inbox_screen.dart';
+
+ApiClient _unused() => ApiClient(
+  auth: AuthService(baseUrl: 'http://api.test'),
+  session: () => null,
+  onSession: (_) {},
+);
