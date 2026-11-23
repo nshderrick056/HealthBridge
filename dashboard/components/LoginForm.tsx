@@ -74,3 +74,12 @@ export function LoginForm() {
         </p>
       )}
       <button
+        type="submit"
+        disabled={busy}
+        className="min-h-14 w-full rounded-full bg-ink font-semibold text-white hover:bg-brand-deep disabled:opacity-50"
+      >
+        {busy ? 'Signing in…' : 'Sign in'}
+      </button>
+    </form>
+  );
+}
