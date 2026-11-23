@@ -11,3 +11,13 @@ void main() {
         'village': 'Nyamata',
         'sex': 'F',
         'ageEstimate': 32,
+        'birthDate': null,
+        'archived': false,
+      },
+      'chw': {'id': 'c1', 'name': 'Claudine M.', 'phone': '+250780000101'},
+      'visits': [
+        {
+          'id': 'v1',
+          'type': 'maternal',
+          'recordedAt': '2026-11-10T08:00:00Z',
+          'isUrgent': true,
