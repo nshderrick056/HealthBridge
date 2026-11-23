@@ -222,3 +222,12 @@ void main() {
     ]);
     expect(find.text('Choose your own PIN'), findsOneWidget);
     expect(find.text('New password'), findsNothing); // no email, no password
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '2468');
+    await tester.enterText(fields.at(1), '1357');
+    await tester.tap(find.text('Save and continue'));
+    await tester.pump();
+    expect(find.text('The PINs differ'), findsOneWidget);
+  });
+}
