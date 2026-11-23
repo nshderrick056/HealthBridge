@@ -72,3 +72,17 @@ export async function firebaseSignIn(email: string, password: string): Promise<F
     error?: { message?: string };
   };
   if (!res.ok || !body.idToken || !body.refreshToken) {
+    const message = body.error?.message ?? '';
+    if (message.startsWith('TOO_MANY_ATTEMPTS')) return { ok: false, status: 429, error: 'too_many_attempts' };
+    if (message.startsWith('USER_DISABLED')) return { ok: false, status: 403, error: 'account_disabled' };
+    return { ok: false, status: 401, error: 'invalid_credentials' };
+  }
+  return {
+    ok: true,
+    idToken: body.idToken,
+    refreshToken: body.refreshToken,
+    name: body.displayName ?? '',
+    role: claimsOf(body.idToken).role ?? null,
+    mustChange: claimsOf(body.idToken).mc === true,
+  };
+}
