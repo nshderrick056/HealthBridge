@@ -48,3 +48,12 @@ class _FakeSupervision extends SupervisionRepository {
       'shortId': 'P0412',
       'name': 'Uwase Marie',
       'village': 'Nyamata',
+    },
+    'chw': {'name': 'Mukamana Alice', 'phone': '+250780000501'},
+    'dangerSigns': [
+      {'code': 'HB', 'label': 'Heavy bleeding'},
+    ],
+    'events': [
+      {'fromStatus': 'new', 'toStatus': 'escalated', 'actor': 'Grace'},
+    ],
+  });
