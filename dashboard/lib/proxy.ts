@@ -54,3 +54,12 @@ export async function forward(req: NextRequest, path: string[]) {
   } catch {
     return json({ error: 'api_unreachable' }, 502);
   }
+
+  if (!upstream || upstream.status === 401) {
+    const out = json({ error: 'unauthorized' }, 401);
+    clearSession(out);
+    return out;
+  }
+  const out = new NextResponse(await upstream.text(), {
+    status: upstream.status,
+    headers: {
