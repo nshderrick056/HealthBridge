@@ -3,3 +3,17 @@
 export type AlertStatus = 'new' | 'reviewed' | 'escalated' | 'follow_up' | 'resolved';
 export type Channel = 'internet' | 'sms';
 export type VisitType = 'maternal' | 'child' | 'malaria' | 'nutrition';
+
+export type AlertSummary = {
+  id: string;
+  status: AlertStatus;
+  channel: Channel;
+  createdAt: string;
+  ackedToChwAt: string | null;
+  isPartial: boolean;
+  visit: { id: string; type: VisitType; recordedAt: string };
+  patient: { shortId: string; name: string | null };
+  chw: { id: string; name: string };
+  village: string | null;
+  dangerSigns: string[];
+};
