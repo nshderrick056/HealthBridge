@@ -28,3 +28,12 @@ export type AlertEvent = {
   actor: string | null;
   createdAt: string;
 };
+
+export type AlertDetail = {
+  id: string;
+  status: AlertStatus;
+  channel: Channel;
+  createdAt: string;
+  ackedToChwAt: string | null;
+  next: AlertStatus[];
+  visit: {
