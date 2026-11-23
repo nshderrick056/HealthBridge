@@ -22,3 +22,16 @@ export const UserIcon = ({ className = 'size-4' }) => (
     <path d="M4 21a8 8 0 0 1 16 0" />
   </svg>
 );
+
+export const CalendarIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M16 3v4M8 3v4M3 11h18" />
+  </svg>
+);
+
+export const ArrowUpIcon = ({ className = 'size-4' }) => (
+  <svg {...props} className={className}>
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+);
