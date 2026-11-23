@@ -8,3 +8,12 @@ export class ApiError extends Error {
     super(code);
   }
 }
+
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`/api/${path}`, {
+    ...init,
+    headers: { 'content-type': 'application/json', ...init?.headers },
+    cache: 'no-store',
+  });
+  if (res.status === 401) {
+    window.location.assign('/login');
