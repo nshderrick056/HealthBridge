@@ -206,3 +206,12 @@ void main() {
     expect(repo.lastCall, '+250788123456');
     expect(find.text('Gashora Health Centre'), findsOneWidget);
   });
+
+  testWidgets('first sign-in asks a CHW for their own PIN, typed twice', (
+    tester,
+  ) async {
+    await pump(tester, const ChangeSecretScreen(), [
+      sessionProvider.overrideWith(
+        (ref) => const Session(
+          accessToken: 't',
+          userId: 'u1',
