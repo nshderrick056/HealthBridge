@@ -14,3 +14,17 @@ const outfit = localFont({
   variable: '--font-outfit',
   display: 'swap',
 });
+
+export const metadata: Metadata = {
+  title: { default: 'HealthBridge supervisor', template: '%s · HealthBridge' },
+  description: 'Urgent alert inbox for health centre supervisors',
+  robots: { index: false, follow: false },
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en" className={outfit.variable}>
+      <body className="min-h-screen font-sans antialiased">{children}</body>
+    </html>
+  );
+}
