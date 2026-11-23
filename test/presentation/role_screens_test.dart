@@ -123,3 +123,18 @@ void main() {
     await tester.pump();
     await tester.pump();
   }
+
+  testWidgets('the inbox lists a case with its CHW, signs and SMS status', (
+    tester,
+  ) async {
+    await pump(tester, const InboxScreen(), [
+      supervisionRepositoryProvider.overrideWithValue(_FakeSupervision()),
+    ]);
+    expect(find.text('Patient P0412'), findsOneWidget);
+    expect(find.text('New'), findsWidgets);
+    expect(find.text('Heavy bleeding'), findsOneWidget);
+    expect(find.text('By SMS · full record not received yet'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    // Let the inbox's 10-second refresh timer run out after the screen has gone.
+    await tester.pump(const Duration(seconds: 11));
+  });
