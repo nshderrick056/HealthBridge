@@ -35,3 +35,9 @@ export function setSession(
   if (s.name) res.cookies.set(NAME_COOKIE, s.name, { ...base, maxAge: REFRESH_MAX_AGE });
   if (s.role) res.cookies.set(ROLE_COOKIE, s.role, { ...base, maxAge: REFRESH_MAX_AGE });
 }
+
+export function clearSession(res: NextResponse) {
+  for (const name of [ACCESS_COOKIE, REFRESH_COOKIE, NAME_COOKIE, ROLE_COOKIE]) {
+    res.cookies.set(name, '', { ...base, maxAge: 0 });
+  }
+}
