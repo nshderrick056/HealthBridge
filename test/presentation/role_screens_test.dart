@@ -114,3 +114,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [...overrides],
+        child: MaterialApp(
+          theme: buildTheme(),
+          home: Scaffold(body: home),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+  }
