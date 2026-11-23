@@ -14,3 +14,9 @@ export default function LoginPage() {
     <main className="flex min-h-screen">
       <section
         aria-hidden
+        className="sticky top-0 hidden h-screen w-1/2 flex-col bg-gradient-to-br from-brand to-brand-deep p-16 lg:flex"
+      >
+        <p className="text-2xl font-semibold tracking-tight text-lime">HealthBridge</p>
+        <div className="flex min-h-0 flex-1 items-end justify-center py-6">
+          <Image
+            src={careTeam}
