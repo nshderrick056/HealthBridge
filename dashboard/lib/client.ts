@@ -17,3 +17,9 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (res.status === 401) {
     window.location.assign('/login');
+    throw new ApiError(401, 'unauthorized');
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(res.status, (body as { error?: string }).error ?? 'request_failed');
+  return body as T;
+}
