@@ -138,3 +138,15 @@ void main() {
     // Let the inbox's 10-second refresh timer run out after the screen has gone.
     await tester.pump(const Duration(seconds: 11));
   });
+
+  testWidgets('a case offers only the allowed next steps and saves a move', (
+    tester,
+  ) async {
+    final repo = _FakeSupervision();
+    await pump(tester, const CaseScreen(alertId: 'a1'), [
+      supervisionRepositoryProvider.overrideWithValue(repo),
+    ]);
+    expect(find.text('Uwase Marie'), findsOneWidget);
+    expect(find.text('Ask for follow-up'), findsOneWidget);
+    expect(find.text('Resolve'), findsOneWidget);
+    expect(find.text('Escalate'), findsNothing);
