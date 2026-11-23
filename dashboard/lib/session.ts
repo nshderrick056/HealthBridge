@@ -56,3 +56,19 @@ function firebaseKey() {
 export type FirebaseSignIn =
   | { ok: true; idToken: string; refreshToken: string; name: string; role: string | null; mustChange: boolean }
   | { ok: false; status: number; error: string };
+
+/** Email + password sign-in with Firebase Auth. The role comes from the token's custom claims. */
+export async function firebaseSignIn(email: string, password: string): Promise<FirebaseSignIn> {
+  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseKey()}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: true }),
+    cache: 'no-store',
+  });
+  const body = (await res.json().catch(() => ({}))) as {
+    idToken?: string;
+    refreshToken?: string;
+    displayName?: string;
+    error?: { message?: string };
+  };
+  if (!res.ok || !body.idToken || !body.refreshToken) {
