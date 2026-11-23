@@ -8,3 +8,9 @@ export const NAME_COOKIE = 'hb_name';
 /** 'supervisor' or 'admin'. Only picks which pages to show; the API checks the role on every call. */
 export const ROLE_COOKIE = 'hb_role';
 export type DashboardRole = 'supervisor' | 'admin';
+
+export function apiUrl() {
+  const url = process.env.API_URL;
+  if (!url) throw new Error('API_URL is not set');
+  return url.replace(/\/+$/, '');
+}
