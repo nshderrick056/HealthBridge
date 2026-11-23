@@ -62,3 +62,7 @@ class _FakeSupervision extends SupervisionRepository {
   Future<void> setStatus(String id, AlertStatus status, {String? note}) async =>
       moves.add((id, status, note));
 }
+
+class _FakeAdmin extends AdminRepository {
+  _FakeAdmin() : super(_unused());
+  final approved = <String>[];
