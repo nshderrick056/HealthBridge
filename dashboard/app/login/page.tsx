@@ -20,3 +20,14 @@ export default function LoginPage() {
         <div className="flex min-h-0 flex-1 items-end justify-center py-6">
           <Image
             src={careTeam}
+            alt=""
+            priority
+            sizes="(min-width: 1024px) 40vw, 1px"
+            className="h-full max-h-[34rem] w-auto object-contain object-bottom"
+            style={{ maskImage: fade, WebkitMaskImage: fade }}
+          />
+        </div>
+        <div>
+          <p className="text-5xl leading-[1.08] font-semibold tracking-tight text-white">
+            Urgent visits from the field, the moment they are sent.
+          </p>
