@@ -53,3 +53,13 @@ export function LoginForm() {
           autoComplete="username"
           required
           value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={field}
+        />
+      </label>
+      <label className="block text-[15px] font-medium">
+        Password
+        <input
+          type="password"
+          autoComplete="current-password"
+          required
