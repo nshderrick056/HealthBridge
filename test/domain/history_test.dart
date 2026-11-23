@@ -39,3 +39,13 @@ void main() {
     expect(h.visits.single.dangerSigns, ['Heavy bleeding']);
     expect(h.visits.single.temperature, 38.9);
   });
+
+  test("a CHW's history links each visit to its patient", () {
+    final h = ChwHistory.fromJson({
+      'chw': {
+        'id': 'c1',
+        'name': 'Claudine M.',
+        'chwRole': 'asm',
+        'phone': '+250780000101',
+        'village': 'Nyamata',
+      },
