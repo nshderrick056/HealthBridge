@@ -17,3 +17,14 @@ export type AlertSummary = {
   village: string | null;
   dangerSigns: string[];
 };
+
+export type AlertList = { alerts: AlertSummary[]; counts: Record<AlertStatus, number> };
+
+export type AlertEvent = {
+  id: string;
+  fromStatus: AlertStatus | null;
+  toStatus: AlertStatus;
+  note: string | null;
+  actor: string | null;
+  createdAt: string;
+};
