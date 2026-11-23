@@ -17,3 +17,11 @@ const LINKS = {
     { href: '/admin/centres', label: 'Health centres', short: 'Centres', Icon: HospitalIcon },
   ],
 };
+
+/** The dark sidebar's links; the current one is a lime pill. Horizontal in the phone top bar. */
+export function NavLinks({ section = 'supervisor', vertical = false }: { section?: Section; vertical?: boolean }) {
+  const path = usePathname();
+  return (
+    <nav aria-label="Main" className={vertical ? 'flex flex-col gap-1' : 'flex gap-1 overflow-x-auto'}>
+      {LINKS[section].map(({ href, label, short, Icon }) => {
+        const active = path === href || path.startsWith(`${href}/`);
