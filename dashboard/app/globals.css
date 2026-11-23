@@ -44,3 +44,13 @@ body {
   background: var(--color-canvas);
   color: var(--color-ink);
 }
+
+::selection {
+  background: var(--color-lime);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
