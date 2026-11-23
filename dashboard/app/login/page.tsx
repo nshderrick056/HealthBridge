@@ -42,3 +42,13 @@ export default function LoginPage() {
           <h1 className="mt-1 text-4xl font-semibold tracking-tight">Sign in</h1>
           <p className="mt-2 mb-6 text-muted">
             For supervisors and admins. Use the email and password your admin set up.
+          </p>
+          <LoginForm />
+          <p className="mt-5 text-[15px] text-muted">
+            First time? Sign in to the HealthBridge app first to choose your own password.
+          </p>
+        </div>
+      </div>
+    </main>
+  );
+}
