@@ -21,3 +21,13 @@ void main() {
           'type': 'maternal',
           'recordedAt': '2026-11-10T08:00:00Z',
           'isUrgent': true,
+          'isPartial': false,
+          'dangerSigns': ['Heavy bleeding'],
+          'temperature': 38.9,
+          'condition': 'Needs attention',
+          'symptoms': null,
+          'notes': 'Referred',
+          'followUpOn': null,
+        },
+      ],
+    });
