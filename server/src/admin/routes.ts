@@ -108,4 +108,60 @@ export function adminRouter(fb: Fb, sender: SmsSender) {
     const list = users.docs
       .map((d) => ({ ...memberJson(d.id, d.data()), healthCenterName: names.get(d.data().healthCenterId) ?? null }))
       .sort((a, b) => a.fullName.localeCompare(b.fullName));
+    res.json({ members: list });
+  });
+
+  router.get('/users/:id', async (req, res) => {
+    const { ref, data } = await member(req.params.id);
+    const hc = data.healthCenterId ? (await fb.fs.collection('healthCenters').doc(data.healthCenterId).get()).data() : null;
+    res.json({ ...memberJson(ref.id, data), healthCenterName: (hc?.name as string) ?? null });
+  });
+
+  /** Switches an account off or on. Off: no PIN, SMS or password sign-in, and open sessions end at once. */
+  router.patch('/users/:id', async (req, res) => {
+    const { active } = z.object({ active: z.boolean() }).parse(req.body);
+    const { ref } = await member(req.params.id);
+    await ref.update({ active });
+    await fb.auth.updateUser(ref.id, { disabled: !active });
+    if (!active) await fb.auth.revokeRefreshTokens(ref.id);
+    await audit(fb, callerOf(res).uid, active ? 'user.activate' : 'user.deactivate', 'users', ref.id);
+    res.json({ id: ref.id, active });
+  });
+
+  /**
+   * Deletes the account and its sign-in details and devices. The patients and visits they recorded stay:
+   * health records are kept (their CHW then shows as unknown).
+   */
+  router.delete('/users/:id', async (req, res) => {
+    const { ref } = await member(req.params.id);
+    const devices = await fb.fs.collection('devices').where('userId', '==', ref.id).get();
+    await fb.auth.deleteUser(ref.id).catch((e: { code?: string }) => {
+      if (e.code !== 'auth/user-not-found') throw e;
+    });
+    const batch = fb.fs.batch();
+    for (const d of devices.docs) batch.delete(d.ref);
+    batch.delete(fb.fs.collection('credentials').doc(ref.id));
+    batch.delete(ref);
+    await batch.commit();
+    await audit(fb, callerOf(res).uid, 'user.delete', 'users', ref.id);
+    res.json({ id: ref.id, deleted: true });
+  });
+
+  /** A health centre with its details and the CHWs and supervisors who belong to it. */
+  router.get('/health-centers/:id', async (req, res) => {
+    const id = idParam.parse(req.params.id);
+    const snap = await fb.fs.collection('healthCenters').doc(id).get();
+    if (!snap.exists) throw new HttpError(404, 'not_found');
+    const c = snap.data()!;
+    const users = await fb.fs.collection('users').where('healthCenterId', '==', id).get();
+    res.json({
+      id,
+      name: c.name as string,
+      district: (c.district as string | null) ?? null,
+      sector: (c.sector as string | null) ?? null,
+      callNumber: (c.callNumber as string | null) ?? null,
+      members: users.docs
+        .map((d) => memberJson(d.id, d.data()))
+        .filter((m) => m.role === 'chw' || m.role === 'supervisor')
+
 
