@@ -14,3 +14,14 @@ export function apiUrl() {
   if (!url) throw new Error('API_URL is not set');
   return url.replace(/\/+$/, '');
 }
+
+const base = {
+  httpOnly: true,
+  // Lax: sent on a top-level link into the dashboard, never on a cross-site PATCH.
+  sameSite: 'lax' as const,
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+};
+// A Firebase ID token lives 60 min; its cookie expires five minutes earlier so we refresh before the API says 401.
+const ACCESS_MAX_AGE = 55 * 60;
+const REFRESH_MAX_AGE = 30 * 24 * 3600;
