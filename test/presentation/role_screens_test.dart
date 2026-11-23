@@ -171,3 +171,10 @@ void main() {
         adminRepositoryProvider.overrideWithValue(repo),
       ]);
       expect(find.text('Mukamana Alice'), findsOneWidget);
+      await tester.tap(find.text('Approve'));
+      await tester.pump();
+      await tester.pump();
+      expect(repo.approved, ['r1']);
+      expect(find.text('No one is waiting.'), findsOneWidget);
+    },
+  );
