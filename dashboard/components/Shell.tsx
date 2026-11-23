@@ -30,3 +30,10 @@ export async function Shell({ section, children }: { section: Section; children:
     <div className="lg:flex">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-ink px-5 pt-8 pb-6 lg:flex">
         <p className="text-[22px] font-semibold tracking-tight text-lime">HealthBridge</p>
+        <p className="text-[15px] text-side">{role}</p>
+        <div className="mt-8 flex-1">
+          <NavLinks section={section} vertical />
+        </div>
+        <div className="space-y-4 border-t border-white/15 pt-5">
+          <div className="flex items-center gap-3">
+            <span
