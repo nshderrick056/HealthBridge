@@ -49,3 +49,11 @@ void main() {
         'phone': '+250780000101',
         'village': 'Nyamata',
       },
+      'visits': [
+        {
+          'id': 'v1',
+          'type': 'child',
+          'recordedAt': null,
+          'isUrgent': false,
+          'isPartial': true,
+          'dangerSigns': [],
