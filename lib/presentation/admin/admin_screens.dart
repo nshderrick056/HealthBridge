@@ -88,7 +88,8 @@ class _ResetRequestsScreenState
 
     return RefreshIndicator(
       onRefresh: () async {
-        await ref.refresh(resetRequestsProvider.future);
+        ref.invalidate(resetRequestsProvider);
+        await ref.read(resetRequestsProvider.future);
       },
       child: PageBody(
         children: [

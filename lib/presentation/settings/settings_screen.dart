@@ -113,7 +113,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
               value: current.rememberLogin,
               onChanged: controller.setRememberLogin,
-              activeColor: HbColors.teal,
+              activeThumbColor: HbColors.teal,
             ),
           ),
         ],

@@ -56,7 +56,29 @@ class VisitDangerSigns extends Table {
 }
 
 /// Ordered upload queue: one row per local change, drained oldest first by the sync engine.
+class Outbox extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get entity => text()(); // patient | visit
+  TextColumn get entityId => text()();
+  TextColumn get op => textEnum<OutboxOp>()();
+  TextColumn get payloadJson => text()();
+  IntColumn get attempts => integer().withDefault(const Constant(0))();
+  DateTimeColumn get nextTryAt => dateTime().nullable()();
+  TextColumn get lastError => text().nullable()();
+}
 
+class UrgentDispatch extends Table {
+  TextColumn get visitId => text().references(Visits, #id)();
+  TextColumn get channel => text()(); // internet | sms_composer | sms_direct
+  TextColumn get state => textEnum<DispatchState>()();
+  DateTimeColumn get sentAt => dateTime().nullable()();
+  DateTimeColumn get confirmedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {visitId};
+}
+
+/// Autosave for half-filled forms, one row per screen.
 class Drafts extends Table {
   TextColumn get id => text()();
   TextColumn get screen => text()();
@@ -130,4 +152,3 @@ class AppDatabase extends _$AppDatabase {
 Future<AppDatabase> openAppDatabase() async {
   return AppDatabase(await openDatabaseExecutor());
 }
-
