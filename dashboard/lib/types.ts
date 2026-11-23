@@ -60,3 +60,13 @@ export type AlertDetail = {
   dangerSigns: { code: string; label: string }[];
   events: AlertEvent[];
 };
+
+export type Chw = {
+  id: string;
+  name: string;
+  chwRole: 'asm' | 'binome' | null;
+  phone: string;
+  village: string | null;
+  lastSyncAt: string | null;
+  pendingCount: number;
+};
