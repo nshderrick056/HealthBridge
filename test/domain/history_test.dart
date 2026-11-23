@@ -31,3 +31,11 @@ void main() {
         },
       ],
     });
+    expect(h.patient.name, 'Uwase Marie');
+    expect(h.patient.ageSex, '32 years · Female');
+    expect(h.patient.chwName, 'Claudine M.');
+    expect(h.chwId, 'c1');
+    expect(h.visits.single.isUrgent, isTrue);
+    expect(h.visits.single.dangerSigns, ['Heavy bleeding']);
+    expect(h.visits.single.temperature, 38.9);
+  });
