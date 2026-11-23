@@ -163,5 +163,61 @@ export function adminRouter(fb: Fb, sender: SmsSender) {
       members: users.docs
         .map((d) => memberJson(d.id, d.data()))
         .filter((m) => m.role === 'chw' || m.role === 'supervisor')
+        .sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    });
+  });
+
+  /** Reset requests waiting for an admin, oldest first. */
+  router.get('/reset-requests', async (_req, res) => {
+    const snap = await fb.fs.collection('resetRequests').where('status', '==', 'pending').get();
+    const requests = await Promise.all(
+      snap.docs.map(async (d) => {
+        const r = d.data();
+        const user = (await fb.fs.collection('users').doc(r.userId).get()).data() as UserDoc | undefined;
+        return {
+          id: d.id,
+          userId: r.userId,
+          name: user?.fullName ?? null,
+          phone: user?.phone ?? null,
+          role: user?.role ?? null,
+          createdAt: (r.createdAt as Timestamp | undefined)?.toDate().toISOString() ?? null,
+        };
+      }),
+    );
+    requests.sort((a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? ''));
+    res.json({ requests });
+  });
+
+  /** Approves a request: a one-time code is texted to the user's phone. The admin never sees it. */
+  router.post('/reset-requests/:id/approve', async (req, res) => {
+    const ref = fb.fs.collection('resetRequests').doc(z.string().min(1).parse(req.params.id));
+    const snap = await ref.get();
+    if (!snap.exists) throw new HttpError(404, 'not_found');
+    const r = snap.data()!;
+    if (r.status !== 'pending') throw new HttpError(409, 'not_pending');
+    const user = (await fb.fs.collection('users').doc(r.userId).get()).data() as UserDoc | undefined;
+    if (!user?.active) throw new HttpError(409, 'user_inactive');
+
+    const code = randomInt(1_000_000).toString().padStart(6, '0');
+    try {
+      await sender.send(user.phone, `HealthBridge: your reset code is ${code}. It expires in 30 minutes.`);
+    } catch {
+      // Nothing is stored, so the admin can simply approve again once SMS works.
+      throw new HttpError(502, 'sms_failed');
+    }
+    await ref.update({
+      status: 'approved',
+      codeHash: await hash(code),
+      attempts: 0,
+      approvedBy: callerOf(res).uid,
+      expiresAt: Timestamp.fromMillis(Date.now() + RESET_CODE_MS),
+      approvedAt: FieldValue.serverTimestamp(),
+    });
+    await audit(fb, callerOf(res).uid, 'reset.approve', 'resetRequests', ref.id);
+    res.json({ id: ref.id, status: 'approved' });
+  });
+
+  return router;
+}
 
 
