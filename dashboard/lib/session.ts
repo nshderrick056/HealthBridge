@@ -86,3 +86,12 @@ export async function firebaseSignIn(email: string, password: string): Promise<F
     mustChange: claimsOf(body.idToken).mc === true,
   };
 }
+
+/** The token's claims. Read only to choose what to show: the API verifies the token on every call. */
+function claimsOf(idToken: string): { role?: string; mc?: boolean } {
+  try {
+    return JSON.parse(Buffer.from(idToken.split('.')[1], 'base64url').toString()) as { role?: string; mc?: boolean };
+  } catch {
+    return {};
+  }
+}
