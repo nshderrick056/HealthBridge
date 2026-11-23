@@ -7,3 +7,18 @@ export async function POST(req: NextRequest) {
   if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
     return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   }
+
+  let signIn: Awaited<ReturnType<typeof firebaseSignIn>>;
+  try {
+    signIn = await firebaseSignIn(email, password);
+  } catch {
+    return NextResponse.json({ error: 'api_unreachable' }, { status: 502 });
+  }
+  if (!signIn.ok) return NextResponse.json({ error: signIn.error }, { status: signIn.status });
+  // CHWs use the mobile app; supervisors and admins get a dashboard session.
+  const role = signIn.role;
+  if (role !== 'supervisor' && role !== 'admin') {
+    return NextResponse.json({ error: 'not_supervisor' }, { status: 403 });
+  }
+  // Still the temporary password from the admin's SMS: it is replaced in the app first.
+  if (signIn.mustChange) return NextResponse.json({ error: 'must_change' }, { status: 403 });
