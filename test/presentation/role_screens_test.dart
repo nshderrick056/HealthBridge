@@ -57,3 +57,8 @@ class _FakeSupervision extends SupervisionRepository {
       {'fromStatus': 'new', 'toStatus': 'escalated', 'actor': 'Grace'},
     ],
   });
+
+  @override
+  Future<void> setStatus(String id, AlertStatus status, {String? note}) async =>
+      moves.add((id, status, note));
+}
