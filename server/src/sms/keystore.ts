@@ -2,7 +2,6 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { env } from '../env';
 
-
 const kek = () => Buffer.from(env.SMS_KEY_ENC_KEY, 'hex');
 
 export function wrapKey(key: Buffer): Buffer {
