@@ -15,7 +15,7 @@ const _task = 'rw.healthbridge.sync';
 bool get _supported => !kIsWeb && Platform.isAndroid;
 
 /// Drains the outbox every 30 minutes while signed in, even with the app closed, as soon as there is
-/// a network (TRD §2/§4). Calling it again keeps the existing schedule.
+
 Future<void> scheduleBackgroundSync() async {
   if (!_supported) return;
   await Workmanager().initialize(callbackDispatcher);

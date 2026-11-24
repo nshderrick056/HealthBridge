@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// The outbox keeps each change as the payload built when it was saved (patientPayload / visitPayload,
-// snake_case JSON). These turn it into the Firestore document the security rules check, adding who owns
-// it. Field names match docs/ERD.md and firestore.rules exactly.
+// The outbox keeps each change as the payload built when it was saved.
 
 Timestamp? _ts(Object? iso) =>
     iso == null ? null : Timestamp.fromDate(DateTime.parse(iso as String));
