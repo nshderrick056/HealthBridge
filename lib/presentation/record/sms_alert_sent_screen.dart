@@ -13,7 +13,9 @@ import '../patients/patient_profile_screen.dart';
 import '../shell/app_shell.dart';
 import '../view_models.dart';
 
-/// Follows the urgent alert's real state (lib/urgent/): internet first, then SMS and its ack. 
+/// Follows the urgent alert's real state (lib/urgent/): internet first, then SMS and its ack. With no
+/// ack after 10 minutes it offers Resend and a call; the store build, which cannot read SMS, also
+/// lets the CHW confirm by hand once the "HB OK" reply is in the inbox.
 class SmsAlertSentScreen extends ConsumerWidget {
   const SmsAlertSentScreen({super.key, required this.visitId});
 
