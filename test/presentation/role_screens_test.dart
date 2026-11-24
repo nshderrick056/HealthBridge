@@ -7,6 +7,8 @@ import 'package:health_bridge/core/theme/app_theme.dart';
 import 'package:health_bridge/data/providers.dart';
 import 'package:health_bridge/data/repositories/supervision_repository.dart';
 import 'package:health_bridge/domain/entities/supervision.dart';
+import 'package:health_bridge/presentation/admin/admin_screens.dart';
+import 'package:health_bridge/presentation/auth/change_secret_screen.dart';
 import 'package:health_bridge/presentation/supervisor/case_screen.dart';
 import 'package:health_bridge/presentation/supervisor/inbox_screen.dart';
 
@@ -59,6 +61,47 @@ class _FakeSupervision extends SupervisionRepository {
   @override
   Future<void> setStatus(String id, AlertStatus status, {String? note}) async =>
       moves.add((id, status, note));
+}
+
+class _FakeAdmin extends AdminRepository {
+  _FakeAdmin() : super(_unused());
+  final approved = <String>[];
+
+  @override
+  Future<List<ResetRequest>> resetRequests() async => approved.isEmpty
+      ? [
+          ResetRequest.fromJson({
+            'id': 'r1',
+            'name': 'Mukamana Alice',
+            'phone': '+250790218726',
+            'role': 'chw',
+          }),
+        ]
+      : [];
+
+  @override
+  Future<void> approve(String requestId) async => approved.add(requestId);
+
+  final centreNames = <String>['Nyamata Health Centre'];
+  String? lastCall;
+
+  @override
+  Future<List<HealthCentre>> centres() async => [
+    for (final (i, n) in centreNames.indexed)
+      HealthCentre.fromJson({'id': 'hc$i', 'name': n}),
+  ];
+
+  @override
+  Future<String> createCentre({
+    required String name,
+    required String district,
+    required String sector,
+    String? callNumber,
+  }) async {
+    centreNames.add(name.trim());
+    lastCall = callNumber;
+    return 'hc${centreNames.length - 1}';
+  }
 }
 
 void main() {
@@ -118,5 +161,73 @@ void main() {
       AlertStatus.resolved,
       'Seen at the clinic',
     ));
+  });
+
+  testWidgets(
+    'the admin approves a reset request, which then leaves the list',
+    (tester) async {
+      final repo = _FakeAdmin();
+      await pump(tester, const ResetRequestsScreen(), [
+        adminRepositoryProvider.overrideWithValue(repo),
+      ]);
+      expect(find.text('Mukamana Alice'), findsOneWidget);
+      await tester.tap(find.text('Approve'));
+      await tester.pump();
+      await tester.pump();
+      expect(repo.approved, ['r1']);
+      expect(find.text('No one is waiting.'), findsOneWidget);
+    },
+  );
+
+  testWidgets('the admin adds a health centre, which joins the list', (
+    tester,
+  ) async {
+    final repo = _FakeAdmin();
+    await pump(tester, const CentresScreen(), [
+      adminRepositoryProvider.overrideWithValue(repo),
+    ]);
+    expect(find.text('Nyamata Health Centre'), findsOneWidget);
+
+    await tester.tap(find.text('Add health centre'));
+    await tester.pump();
+    expect(repo.centreNames, hasLength(1)); // empty form is refused
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Gashora Health Centre');
+    await tester.enterText(fields.at(1), 'Bugesera');
+    await tester.enterText(fields.at(2), 'Gashora');
+    await tester.enterText(fields.at(3), '0788 123 456');
+    await tester.ensureVisible(find.text('Add health centre'));
+    await tester.tap(find.text('Add health centre'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(repo.centreNames.last, 'Gashora Health Centre');
+    expect(repo.lastCall, '+250788123456');
+    expect(find.text('Gashora Health Centre'), findsOneWidget);
+  });
+
+  testWidgets('first sign-in asks a CHW for their own PIN, typed twice', (
+    tester,
+  ) async {
+    await pump(tester, const ChangeSecretScreen(), [
+      sessionProvider.overrideWith(
+        (ref) => const Session(
+          accessToken: 't',
+          userId: 'u1',
+          fullName: 'Mukamana Alice',
+          mustChange: true,
+        ),
+      ),
+    ]);
+    expect(find.text('Choose your own PIN'), findsOneWidget);
+    expect(find.text('New password'), findsNothing); // no email, no password
+
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), '2468');
+    await tester.enterText(fields.at(1), '1357');
+    await tester.tap(find.text('Save and continue'));
+    await tester.pump();
+    expect(find.text('The PINs differ'), findsOneWidget);
   });
 }

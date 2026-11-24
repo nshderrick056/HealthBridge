@@ -1,197 +1,162 @@
-# HealthBridge
+# HealthBridge Rwanda
 
-**HealthBridge** is an offline-first Flutter app for Community Health Workers (CHWs) in Rwanda. CHWs record patient visits and danger signs on the phone; urgent cases are relayed to the health centre over the internet, or via encrypted SMS when there is no data connection. The project also includes a Next.js supervisor/admin dashboard and a Node.js/Express server.
+Offline-first Android app for community health workers (CHWs), their supervisors and an admin, on Firebase
+(Cloud Firestore + Firebase Auth), with a small Express server for what an app must not do and an encrypted
+SMS fallback for urgent alerts. The specs are in [documents/](documents/). What the whole project does and how it
+fits together is in [PRODUCT.md](PRODUCT.md) (with the split of the code among five people); the scripts for the
+demo video are in [docs/VIDEO_SCRIPTS.md](docs/VIDEO_SCRIPTS.md).
 
----
+The look is one design system: Outfit font, brand green `#19695A` with lime `#D4FF89`, 24 px cards, 56 px pill
+buttons and a floating tab bar (`lib/core/theme/app_theme.dart`, `lib/core/widgets/`). The web dashboard uses the
+same tokens.
 
-## Repository layout
+## Screenshots
 
-```
-health_bridge/
-├── lib/                  # Flutter app
-│   ├── core/             # Auth, API client, theme, shared widgets
-│   ├── data/             # Drift (SQLite/SQLCipher) repositories and providers
-│   ├── domain/           # Entities, repository interfaces, use cases
-│   ├── presentation/     # Screens and controllers (Riverpod)
-│   ├── sync/             # Background Firestore sync engine
-│   └── urgent/           # SMS alert dispatcher
-├── server/               # Node.js / Express back-end
-│   └── src/
-│       ├── admin/        # Account & reset-request routes
-│       ├── devices/      # Device registration
-│       ├── sms/          # SMS webhook, codec, keystore
-│       ├── supervisor/   # Supervisor routes
-│       └── visits/       # Visit merge logic
-├── dashboard/            # Next.js supervisor/admin web app
-│   ├── app/              # Next.js App Router pages
-│   ├── components/       # React components
-│   └── lib/              # API helpers (admin.ts, history.ts)
-├── docs/                 # ERD and other design documents
-├── firestore.rules       # Firestore security rules
-├── firestore.indexes.json
-└── pubspec.yaml
-```
+<!-- TODO: add screenshots here (docs/screenshots/*.png): sign-in, CHW home with the stat cards, patient
+profile, urgent alert, supervisor inbox and case, CHW and patient history, admin Members, web dashboard. -->
 
----
+## Layout
 
-## Prerequisites
+| Path | What |
+| --- | --- |
+| `lib/` | Flutter app (Android only), in layers: `presentation/` (screens from the Figma file `healthbridge-v2`, each with a Riverpod controller beside it; no `setState`), `domain/` (entities, repository interfaces, use cases), `data/` (encrypted drift database and the repositories implementing the domain interfaces). Around them: `core/` (Firebase sign-in, API client, settings in SharedPreferences, SMS codec, theme, shared widgets), `sync/` (upload to Firestore and background sync) and `urgent/` (urgent-alert pathway). |
+| `firestore.rules`, `firestore.indexes.json` | Firestore security rules and indexes (deployed to project `healthbridge-rwanda`). |
+| `docs/ERD.md` | Entity-relationship diagram of the Firestore collections. |
+| `server/` | Express + TypeScript on the Firebase Admin SDK: PIN sign-in, accounts and resets, device keys, the SMS gateway, alert status changes. Tested with Vitest against the Firebase emulators. |
+| `dashboard/` | Web dashboard (Next.js), signing in with Firebase: supervisors get alerts, CHWs and patients with their visit history; admins get Resets, Members (CHW and Supervisor tabs, deactivate and delete) and Centres. |
+| `android/` | Flavours `store` (no SMS permission, opens the SMS composer) and `managed` (sends SMS itself through the Kotlin channel in `app/src/managed/kotlin/`). `app/google-services.json` is the app's public Firebase config. |
+| `shared/sms-vectors.json` | Test vectors both SMS codecs (TypeScript and Dart) must pass. |
 
-| Tool | Minimum version | Notes |
-|---|---|---|
-| Flutter | 3.32+ (Dart SDK ^3.13.2) | `flutter --version` |
-| Android Studio / Xcode | latest stable | for mobile targets |
-| Node.js | 18 LTS | server & dashboard |
-| npm | 9+ | comes with Node 18 |
-| Firebase CLI | latest | `npm i -g firebase-tools` |
-| A Firebase project | — | see Firebase setup below |
+## How it works
 
----
+- **Roles and sign-in (Firebase Auth).** Only an admin creates accounts; self sign-up and self-delete are off in
+  Firebase. Each account carries its role (`chw`, `supervisor`, `admin`) and health centre as custom claims.
+  Three ways in: **phone + PIN** (the server checks the PIN and returns a Firebase custom token), **phone + SMS
+  code** (Firebase texts it), **email + password**. After sign-in the app opens the screens for the role.
+- **New accounts.** The admin enters the person's details only; the server makes a random temporary PIN (CHW)
+  and/or password (with an email) and texts them to the person. At first sign-in the app asks them to choose
+  their own before anything else, and the dashboard refuses the temporary password. The SMS gateway carries them;
+  the admin never sees them.
+- **Forgot PIN or password.** The user asks in the app; the admin approves it on the Resets tab; the server texts
+  a one-time code (hashed, 30 minutes, 5 tries); the user enters it and sets a new PIN or password, and is signed
+  out everywhere else.
+- **CHW data, offline first.** Patients and visits are saved in an encrypted SQLite database (SQLCipher) with an
+  upload queue, so nothing is lost offline. When online, sync writes each change to its Firestore document as the
+  signed-in CHW, under the security rules, and pulls the CHW's patients, alert confirmations, danger signs and the
+  health centre's call number. Firestore's own (unencrypted) offline cache is off. One CHW's records per phone:
+  another CHW can only sign in once everything has uploaded.
+- **Urgent alerts.** Online, the visit and its alert go to Firestore together within 10 s. Otherwise the app sends
+  an encrypted SMS (AES-GCM, the device's own key) to the Africa's Talking number; the server decrypts it, stores a
+  partial case and replies `HB OK <code> <tag>` (HMAC-signed, so only the server can confirm). When the phone is
+  back online it uploads the full visit and the server merges the two into one case.
+- **Supervisors** see their health centre's alerts (inbox, case detail, status changes with a note), their CHWs
+  and patients in the app or on the web dashboard. Tapping a CHW shows every visit that CHW recorded; tapping a
+  patient shows their profile and visit history; a visit opens its full detail. Status changes go through the
+  server, which checks the allowed moves, records who made them and texts the CHW on Escalate and Follow-up.
+  Everything is scoped to the supervisor's own centre on the server.
+- **CHW home** shows stat cards (visited today, due for a visit, urgent today), today's due patients and visits,
+  and a pill for the connection and what is still waiting to upload.
+- **Admins** (app and web) approve resets, create accounts, and manage Members in two tabs (CHWs, Supervisors):
+  open a member to see their details, deactivate them (Firestore `active:false`, Auth user disabled, tokens
+  revoked, so they are out at once) or delete them (account, credentials and devices go; patients and visits are
+  kept). A health centre's name opens its details. Admin accounts are never touched from these screens.
+- **Security rules** (`firestore.rules`): a CHW reads and writes only their own patients and visits (field by
+  field validation; a visit is urgent exactly when it has danger signs), a supervisor reads only their centre's,
+  nothing can be deleted (archive instead), and PIN hashes, device keys, reset requests and logs are server-only.
 
-## 1. Clone the repository
+## Status
 
-```bash
-git clone https://github.com/nshderrick056/HealthBridge.git
-cd HealthBridge
-```
+| Part | State |
+| --- | --- |
+| Firebase project, rules, indexes, ERD | done, deployed |
+| Sign-in (PIN, SMS code, email), forgot flow, role screens | done, tested on a phone (15 Nov 2026) |
+| CHW app: patients (create, edit, archive), visits, sync to Firestore, settings | done, tested on a phone |
+| Urgent alert by internet; supervisor inbox, escalate with note; admin new account and reset approval | done, tested on a phone |
+| Offline SMS alert and merge on Firebase | code and server tests done; last phone run was on the Postgres version (1 Nov) |
+| Redesign (Outfit, green and lime), history screens, admin Members and centre details, CHW stat cards | done, installed on a phone; the newest screens are covered by tests, not yet by a full phone run |
+| Web dashboard on Firebase sign-in (supervisor and admin) | done, tested by unit tests only |
+| Tests | 129 Flutter (unit, widget, layout at 4 sizes: 320x568, 430x932, landscape, landscape with extra-large text), 48 server (Firebase emulators), 35 dashboard |
 
----
+## Phone tests
 
-## 2. Firebase setup
+**15 November 2026, Firebase build** (managed build on a Samsung, API behind a Cloudflare tunnel, Africa's
+Talking sandbox): all three sign-in methods; a patient and visit appearing in Firestore under the CHW; forgot PIN
+from request to a working new PIN (code read in the sandbox simulator); an urgent alert reaching the supervisor's
+inbox, escalated with a note and recorded in the history; the admin creating an account. Found and fixed on the
+way: custom tokens must be signed with the key file (the IAM signing API is off in a new project), the SMS region
+policy had to allow Rwanda, and records left by an older install uploaded under the new account (now one CHW per
+phone).
 
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com).
-2. Enable **Authentication** (Email/Password) and **Cloud Firestore** (location `africa-south1`).
-3. Download the config files for each platform and place them:
-   - **Android**: `android/app/google-services.json`
-   - **iOS / macOS**: `ios/Runner/GoogleService-Info.plist` and `macos/Runner/GoogleService-Info.plist`
-   - **Web (dashboard)**: add the Firebase config object to `dashboard/lib/firebase.ts` (create if absent).
-4. Deploy Firestore rules and indexes:
+**1 November 2026, Postgres build**: urgent visit offline sent the sealed SMS by itself; the server decrypted it
+and created the case; back online, the full visit replaced the partial one; Escalate texted the CHW.
 
-```bash
-firebase login
-firebase use <your-project-id>
-firebase deploy --only firestore
-```
+## Still to do
 
----
+- **On a phone:** the offline SMS alert and merge on the Firebase build; 20 visits offline through an app kill and a
+  reboot; background sync with the app closed; the managed build confirming from a real `HB OK` reply.
+- **SMS:** the Africa's Talking sandbox only reaches its simulator. Real phones (urgent acks, reset codes, CHW
+  notices) need a live Africa's Talking number. Firebase also allows only 10 sign-in SMS a day until billing is
+  added (the test number does not count).
+- **Release:** host the API (Vercel) and dashboard, create the signing keystore and GitHub secrets (see Release).
+- **Clinical content:** the danger signs and validation ranges (`lib/data/forms/`) are placeholders until a
+  clinician confirms them. **Kinyarwanda:** app text is English; it needs translation by a native speaker.
+- **Before the Play upload:** workmanager adds foreground-service and boot permissions; Play may ask why.
 
-## 3. Flutter app
+## Run it
 
-### Install dependencies
-
-```bash
-flutter pub get
-```
-
-### Generate Drift database code
-
-The local database uses [Drift](https://drift.simonbinder.eu/) with SQLCipher for encryption at rest. Run the code generator once after a fresh clone or whenever you change a table schema:
-
-```bash
-dart run build_runner build --delete-conflicting-outputs
-```
-
-### Run on a device or emulator
-
-```bash
-flutter run
-```
-
-Specify a target if you have multiple devices:
-
-```bash
-flutter run -d <device-id>   # flutter devices to list
-```
-
-### Run tests
-
-```bash
-flutter test
-```
-
----
-
-## 4. Server
-
-The Express server handles account management, device registration, the SMS webhook, and alert state transitions. It uses the Firebase Admin SDK, so it bypasses Firestore security rules.
+Needs Flutter (stable), Node 20+, Java 21 (for the Firebase emulators) and the Firebase CLI (`npm i -g firebase-tools`).
 
 ```bash
+# server (needs the service account key: Firebase console > Project settings > Service accounts)
 cd server
-npm install
-```
-
-Create a `.env` file in `server/` with the following variables:
-
-```env
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_SERVICE_ACCOUNT_KEY=path/to/serviceAccountKey.json  # or inline JSON
-SMS_WEBHOOK_SECRET=your-sms-gateway-secret
-PORT=3000
-```
-
-Download a service-account key from **Firebase console → Project settings → Service accounts → Generate new private key** and point `FIREBASE_SERVICE_ACCOUNT_KEY` at it. Never commit this file.
-
-Start the server:
-
-```bash
-npm run dev      # development (ts-node / nodemon)
-npm run build    # compile TypeScript
-npm start        # production (compiled output)
-```
-
-Run server tests:
-
-```bash
-npm test
-```
-
----
-
-## 5. Dashboard (Next.js)
-
-```bash
-cd dashboard
-npm install
-```
-
-Create a `.env.local` file in `dashboard/` with your Firebase web config:
-
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-```
-
-Start the development server:
-
-```bash
+cp .env.example .env        # GOOGLE_APPLICATION_CREDENTIALS = path to the key, kept OUTSIDE the repo
+npm ci
+npm test                    # starts the Firebase emulators (offline project demo-healthbridge)
+npm run seed                # demo data into the real project (SEED_PIN, SEED_PASSWORD from .env)
 npm run dev
+
+# app (API_URL: where the phone reaches the server, e.g. a Cloudflare tunnel)
+flutter pub get
+flutter test
+flutter run --flavor managed --dart-define=API_URL=https://<host> --dart-define=SMS_GATEWAY_NUMBER=+2507XXXXXXXX
+
+# web dashboard (needs the server running)
+cd dashboard
+cp .env.example .env.local  # API_URL and FIREBASE_WEB_API_KEY
+npm ci && npm test
+npm run dev                 # http://localhost:3001, sign in as supervisor@example.test with SEED_PASSWORD
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Demo accounts from `npm run seed`: CHWs `+250780000101` to `103` with `SEED_PIN` (sign in with the PIN: these
+numbers are not real phones); supervisor `supervisor@example.test` and admin `admin@example.test` with
+`SEED_PASSWORD`. In the app, the admin creates further accounts (New account tab), adds health centres (Centres tab) and approves resets.
 
-Build for production:
+The first real admin of a project: `ADMIN_EMAIL=... ADMIN_PHONE=+250... ADMIN_PASSWORD='12+ chars' npm run create-admin`.
 
-```bash
-npm run build
-npm start
-```
+After changing the rules: `firebase deploy --only firestore`. After changing a drift table: `dart run build_runner build`.
 
----
- 
+## SMS gateway (Africa's Talking)
 
----
+Point the callbacks at `https://<host>/webhooks/sms?secret=<SMS_WEBHOOK_SECRET>` (inbound) and
+`.../webhooks/sms/delivery?secret=...` (delivery reports), and set `AT_USERNAME` (`sandbox` for the simulator),
+`AT_API_KEY` and `AT_SENDER` in `server/.env`. The app sends urgent SMS to `SMS_GATEWAY_NUMBER` (set at build
+time). In the sandbox, open the simulator on a number before a message to it is sent, or it may not show.
 
-## Architecture overview
+## Release
 
-- **Offline-first**: all patient and visit data is stored in a local SQLCipher database (Drift). Every write also adds an outbox row; the background sync engine (`lib/sync/`) uploads queued records to Firestore when connectivity returns.
-- **Urgent alerts**: if a visit has danger signs, the urgent dispatcher (`lib/urgent/`) tries the internet channel first, then falls back to an AES-encrypted SMS.
-- **Roles**: `chw`, `supervisor`, and `admin` are set as Firebase Auth custom claims by the server when an account is created. Firestore rules enforce them so no client can escalate its own access.
-- **IDs on the phone**: patients and visits get UUID v4 IDs offline. A repeated upload is idempotent — it lands on the same Firestore document instead of creating a duplicate.
+1. **API:** a Vercel project with root `server/`. Env vars: `FIREBASE_SERVICE_ACCOUNT` (the key's JSON),
+   `JWT_SECRET`, `SMS_KEY_ENC_KEY`, `SMS_WEBHOOK_SECRET`, `AT_*`, `CORS_ORIGINS` (the dashboard URL).
+2. **Dashboard:** a Vercel project with root `dashboard/`. Env vars `API_URL`, `FIREBASE_WEB_API_KEY`.
+3. **Firestore:** `firebase deploy --only firestore`; then `npm run create-admin` for the first admin.
+4. **Signing key** (once; a lost key means a new app listing):
+   `keytool -genkey -v -keystore healthbridge-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias healthbridge`.
+   Add its SHA-1 and SHA-256 to both Android apps in the Firebase console, or phone sign-in fails in release builds.
+5. **GitHub secrets:** `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`,
+   `ANDROID_STORE_PASSWORD`; variables `API_URL`, `SMS_GATEWAY_NUMBER`. Then `git tag v1.0.0 && git push origin v1.0.0`.
 
-For the full data model see [docs/ERD.md](docs/ERD.md).
+## Secrets
 
----
- 
+This repo is public. Only `.env.example` files are committed; the service account key lives outside the repo
+(locally) or in `FIREBASE_SERVICE_ACCOUNT` (Vercel). `google-services.json` and the Firebase web API key are public
+by design: they name the project; access is controlled by Firebase Auth and the security rules. Seed data is
+synthetic.
