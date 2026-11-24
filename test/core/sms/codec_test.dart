@@ -45,7 +45,7 @@ void main() {
         final opened = await openSms(
           key,
           expected.reversed.toList(),
-        ); 
+        ); // parts may arrive out of order
         expect(opened.deviceId, v['deviceId']);
         expect(opened.nonce, _hex(v['nonce']));
         expect(opened.plaintext, v['plaintext']);
