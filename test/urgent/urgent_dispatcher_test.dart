@@ -18,8 +18,8 @@ import 'package:http/testing.dart';
 
 enum Net { up, down, hang, error }
 
-/// Stands in for the Firestore batch: records what the internet alert would write, or fails like a dropped connection, a hung one, or a refused write.
-
+/// Stands in for the Firestore batch: records what the internet alert would write, or fails like a
+/// dropped connection, a hung one, or a refused write.
 class _FakeEngine extends SyncEngine {
   _FakeEngine({
     required super.db,
