@@ -156,8 +156,7 @@ class HbTextField extends StatelessWidget {
     this.maxLines = 1,
     this.onChanged,
     this.labelColor = HbColors.ink,
-  }) : assert(maxLines > 0),
-       assert(!obscure || maxLines == 1);
+  });
 
   final String label;
   final String hint;
@@ -259,7 +258,7 @@ class StatusChip extends StatelessWidget {
   }
 }
 
-/// Rounded status label with an optional dot or icon.
+/// Rounded label with an optional dot or icon, e.g. "Offline · 3 visits not sent yet".
 class HbPill extends StatelessWidget {
   const HbPill(
     this.text, {
@@ -300,8 +299,6 @@ class HbPill extends StatelessWidget {
         Flexible(
           child: Text(
             text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: HbText.labelSmall.copyWith(color: foreground),
           ),
         ),
@@ -540,13 +537,17 @@ class SectionHeading extends StatelessWidget {
     children: [
       Flexible(child: Text(title, style: HbText.sectionBold)),
       if (action != null)
-        TextButton(
-          onPressed: onAction,
-          child: Text(
-            action!,
-            style: HbText.bodyMedium.copyWith(
-              color: HbColors.muted,
-              fontWeight: FontWeight.w500,
+        InkWell(
+          onTap: onAction,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            child: Text(
+              action!,
+              style: HbText.bodyMedium.copyWith(
+                color: HbColors.muted,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ),
@@ -664,61 +665,24 @@ class PatientCard extends StatelessWidget {
   Widget build(BuildContext context) => HbCard(
     onTap: onTap,
     padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 320;
-        final patientInfo = Row(
-          children: [
-            HbAvatar(name, kind: avatarFor(status)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: HbText.headingSmall,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    detail,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: HbText.bodySmall,
-                  ),
-                  Text(
-                    '$village · $when',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: HbText.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        );
-
-        if (compact) {
-          return Column(
+    child: Row(
+      children: [
+        HbAvatar(name, kind: avatarFor(status)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              patientInfo,
-              const SizedBox(height: 12),
-              StatusChip(status),
+              Text(name, style: HbText.headingSmall),
+              const SizedBox(height: 2),
+              Text(detail, style: HbText.bodySmall),
+              Text('$village · $when', style: HbText.bodySmall),
             ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(child: patientInfo),
-            const SizedBox(width: 8),
-            StatusChip(status),
-          ],
-        );
-      },
+          ),
+        ),
+        const SizedBox(width: 8),
+        StatusChip(status),
+      ],
     ),
   );
 }
