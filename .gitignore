@@ -46,3 +46,22 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Node (server/, dashboard/)
+node_modules/
+dist/
+.next/
+next-env.d.ts
+.vercel/
+*.tsbuildinfo
+coverage/
+
+# Secrets: only .env.example is committed (this repo is public)
+.env
+.env.*
+!.env.example
+
+# Android signing
+*.jks
+*.keystore
+key.properties
