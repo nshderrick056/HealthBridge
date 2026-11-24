@@ -3777,19 +3777,14 @@ class $$PatientsTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (visitsRefs)
-                    await $_getPrefetchedDataByColumns<
-                      Patient,
-                      $PatientsTable,
-                      Visit,
-                      $VisitsTable
-                    >(
+                    await $_getPrefetchedData<Patient, $PatientsTable, Visit>(
                       currentTable: table,
                       referencedTable: $$PatientsTableReferences
                           ._visitsRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$PatientsTableReferences(db, table, p0).visitsRefs,
-                      currentColumn: 'id',
-                      referencedColumn: 'patient_id',
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where((e) => e.patientId == item.id),
                       typedResults: items,
                     ),
                 ];
@@ -4360,11 +4355,10 @@ class $$VisitsTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (visitDangerSignsRefs)
-                        await $_getPrefetchedDataByColumns<
+                        await $_getPrefetchedData<
                           Visit,
                           $VisitsTable,
-                          VisitDangerSign,
-                          $VisitDangerSignsTable
+                          VisitDangerSign
                         >(
                           currentTable: table,
                           referencedTable: $$VisitsTableReferences
@@ -4375,16 +4369,17 @@ class $$VisitsTableTableManager
                                 table,
                                 p0,
                               ).visitDangerSignsRefs,
-                          currentColumn: 'id',
-                          referencedColumn: 'visit_id',
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.visitId == item.id,
+                              ),
                           typedResults: items,
                         ),
                       if (urgentDispatchRefs)
-                        await $_getPrefetchedDataByColumns<
+                        await $_getPrefetchedData<
                           Visit,
                           $VisitsTable,
-                          UrgentDispatchData,
-                          $UrgentDispatchTable
+                          UrgentDispatchData
                         >(
                           currentTable: table,
                           referencedTable: $$VisitsTableReferences
@@ -4395,8 +4390,10 @@ class $$VisitsTableTableManager
                                 table,
                                 p0,
                               ).urgentDispatchRefs,
-                          currentColumn: 'id',
-                          referencedColumn: 'visit_id',
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.visitId == item.id,
+                              ),
                           typedResults: items,
                         ),
                     ];

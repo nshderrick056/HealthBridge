@@ -1,4 +1,4 @@
-﻿# HealthBridge ERD (Cloud Firestore)
+# HealthBridge ERD (Cloud Firestore)
 
 The database is Cloud Firestore, project `healthbridge-rwanda`, location `africa-south1`. Each box below is a
 top-level collection (or a subcollection, marked); field names are exactly those stored and checked by
