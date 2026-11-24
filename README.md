@@ -133,6 +133,20 @@ numbers are not real phones); supervisor `supervisor@example.test` and admin `ad
 
 The first real admin of a project: `ADMIN_EMAIL=... ADMIN_PHONE=+250... ADMIN_PASSWORD='12+ chars' npm run create-admin`.
 
+### First run, in order
+
+1. **Service-account key.** Firebase console > Project settings > Service accounts > Generate new private key.
+   Save the file outside the repo and put its path in `GOOGLE_APPLICATION_CREDENTIALS` in `server/.env`. To deploy
+   the rules you also need `firebase login` once; the tests and the emulators do not.
+2. **Server first.** `npm run seed` once (demo data), then `npm run dev` in `server/`. The dashboard and the app
+   both call it, so start it before them.
+3. **Tunnel.** Point a tunnel at the server (e.g. `cloudflared tunnel --url http://localhost:<port>`). A quick
+   Cloudflare tunnel gets a new address every time and stops working when it closes. `API_URL` is fixed when the
+   app is built, so after each new tunnel rebuild and reinstall the app with the new address.
+4. **Dashboard.** `npm run dev` in `dashboard/` (it can use the local server address).
+5. **App.** Connect an Android phone with USB debugging on (`flutter devices` must list it), then run the
+   `flutter run` command above with the current `API_URL`.
+
 After changing the rules: `firebase deploy --only firestore`. After changing a drift table: `dart run build_runner build`.
 
 ## SMS gateway (Africa's Talking)
