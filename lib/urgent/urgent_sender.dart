@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:url_launcher/url_launcher.dart';
 
 /// Where the urgent SMS goes: the gateway's number (Africa's Talking shortcode or long number).
-
+/// Set per build with `--dart-define=SMS_GATEWAY_NUMBER=...`.
 const smsGatewayNumber = String.fromEnvironment('SMS_GATEWAY_NUMBER');
 
 class UrgentSendException implements Exception {
