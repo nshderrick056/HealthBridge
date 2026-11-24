@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,170 +11,110 @@ import '../auth/login_controller.dart';
 import '../patients/patients_screen.dart';
 import '../view_models.dart';
 
-final resetRequestsProvider =
-    FutureProvider.autoDispose<List<ResetRequest>>(
+/// Reset requests waiting for the admin; refreshed after each approval.
+final resetRequestsProvider = FutureProvider.autoDispose<List<ResetRequest>>(
   (ref) => ref.watch(adminRepositoryProvider).resetRequests(),
 );
 
-final centresProvider =
-    FutureProvider.autoDispose<List<HealthCentre>>(
+final centresProvider = FutureProvider.autoDispose<List<HealthCentre>>(
   (ref) => ref.watch(adminRepositoryProvider).centres(),
 );
 
-class ResetRequestsScreen extends ConsumerStatefulWidget {
+/// Forgot-PIN/password requests. Approving texts the user a one-time code; the admin never sees it.
+class ResetRequestsScreen extends ConsumerWidget {
   const ResetRequestsScreen({super.key});
 
-  @override
-  ConsumerState<ResetRequestsScreen> createState() =>
-      _ResetRequestsScreenState();
-}
-
-class _ResetRequestsScreenState
-    extends ConsumerState<ResetRequestsScreen> {
-  final Set<String> _approving = {};
-
-  Future<void> _approve(ResetRequest request) async {
-    if (_approving.contains(request.id)) return;
-
-    setState(() => _approving.add(request.id));
-
+  Future<void> _approve(
+    BuildContext context,
+    WidgetRef ref,
+    ResetRequest r,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref
-          .read(adminRepositoryProvider)
-          .approve(request.id);
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
+      await ref.read(adminRepositoryProvider).approve(r.id);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Code sent to ${r.name ?? r.phone ?? 'the user'}'),
+        ),
+      );
+    } on ApiException catch (e) {
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'Code sent to '
-            '${request.name ?? request.phone ?? 'the user'}.',
+            e.code == 'sms_failed'
+                ? 'The SMS could not be sent. Try again in a moment.'
+                : 'Could not approve. Check your connection and try again.',
           ),
         ),
       );
-
-      ref.invalidate(resetRequestsProvider);
-    } on ApiException catch (error) {
-      if (!mounted) return;
-
-      final message = error.code == 'sms_failed'
-          ? 'The SMS could not be sent. Try again.'
-          : 'Could not approve the request. '
-              'Check your connection.';
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not approve the request.'),
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _approving.remove(request.id));
-      }
     }
+    ref.invalidate(resetRequestsProvider);
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final requests = ref.watch(resetRequestsProvider);
-
     return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(resetRequestsProvider);
-        await ref.read(resetRequestsProvider.future);
-      },
+      onRefresh: () => ref.refresh(resetRequestsProvider.future),
       child: PageBody(
         children: [
           const PageHeader(
             title: 'Reset requests',
-            subtitle:
-                'Approving a request sends a one-time code '
-                'to the account holder.',
+            subtitle: 'Approving texts the person a one-time code',
           ),
-
           ...requests.when(
             loading: () => [
               const Padding(
                 padding: EdgeInsets.all(24),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: Center(child: CircularProgressIndicator()),
               ),
             ],
             error: (_, _) => [
               Text(
-                'Could not load reset requests. '
-                'Check your connection and refresh.',
-                style: HbText.bodySmall.copyWith(
-                  color: HbColors.red,
-                ),
+                'Could not load requests. Check your connection.',
+                style: HbText.bodySmall.copyWith(color: HbColors.red),
               ),
             ],
             data: (list) => [
               if (list.isEmpty)
-                Text(
-                  'There are no pending reset requests.',
-                  style: HbText.bodySmall,
-                ),
-
-              for (final request in list)
+                Text('No one is waiting.', style: HbText.bodySmall),
+              for (final r in list)
                 HbCard(
                   child: Row(
                     children: [
-                      HbAvatar(request.name ?? '?'),
+                      HbAvatar(r.name ?? '?'),
                       const SizedBox(width: 12),
-
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              request.name ?? 'Unknown user',
+                              r.name ?? 'Unknown',
                               style: HbText.headingSmall,
                             ),
-                            const SizedBox(height: 4),
                             Text(
                               [
-                                if (request.role != null)
-                                  request.role!.toUpperCase(),
-                                if (request.phone != null)
-                                  request.phone!,
-                                if (request.createdAt != null)
-                                  '${relativeDay(request.createdAt!)} '
-                                      '${clock(request.createdAt!)}',
+                                r.role?.toUpperCase() ?? '',
+                                r.phone ?? '',
+                                if (r.createdAt != null)
+                                  '${relativeDay(r.createdAt!)} ${clock(r.createdAt!)}',
                               ].join(' · '),
                               style: HbText.bodySmall,
                             ),
                           ],
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
                       FilledButton(
-                        onPressed:
-                            _approving.contains(request.id)
-                                ? null
-                                : () => _approve(request),
+                        onPressed: () => _approve(context, ref, r),
                         style: FilledButton.styleFrom(
                           backgroundColor: HbColors.ink,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(48, 48),
                           shape: const StadiumBorder(),
+                          textStyle: HbText.labelMedium,
                         ),
-                        child: Text(
-                          _approving.contains(request.id)
-                              ? 'Sending'
-                              : 'Approve',
-                        ),
+                        child: const Text('Approve'),
                       ),
                     ],
                   ),
@@ -188,6 +127,7 @@ class _ResetRequestsScreenState
   }
 }
 
+/// What the new-account form has chosen; the text fields live in the screen.
 class NewAccountState {
   const NewAccountState({
     this.role = 'chw',
@@ -204,114 +144,67 @@ class NewAccountState {
   NewAccountState copyWith({
     String? role,
     String? chwRole,
-    String? Function()? centreId,
+    String? centreId,
     bool? busy,
-  }) {
-    return NewAccountState(
-      role: role ?? this.role,
-      chwRole: chwRole ?? this.chwRole,
-      centreId:
-          centreId != null ? centreId() : this.centreId,
-      busy: busy ?? this.busy,
-    );
-  }
+  }) => NewAccountState(
+    role: role ?? this.role,
+    chwRole: chwRole ?? this.chwRole,
+    centreId: centreId ?? this.centreId,
+    busy: busy ?? this.busy,
+  );
 }
 
 class NewAccountController extends Notifier<NewAccountState> {
   @override
   NewAccountState build() => const NewAccountState();
 
-  void setRole(String role) {
-    if (state.busy) return;
-    if (role != 'chw' && role != 'supervisor') return;
+  void setRole(String role) => state = state.copyWith(role: role);
+  void setChwRole(String r) => state = state.copyWith(chwRole: r);
+  void setCentre(String id) => state = state.copyWith(centreId: id);
 
-    state = state.copyWith(role: role);
-  }
-
-  void setChwRole(String role) {
-    if (state.busy) return;
-    if (role != 'asm' && role != 'binome') return;
-
-    state = state.copyWith(chwRole: role);
-  }
-
-  void setCentre(String id) {
-    if (state.busy) return;
-
-    state = state.copyWith(
-      centreId: () => id,
-    );
-  }
-
-  Future<String?> create(
-    Map<String, Object?> fields,
-  ) async {
-    if (state.busy) {
-      return 'An account is already being created.';
-    }
-
-    if (state.centreId == null) {
-      return 'Choose a health centre.';
-    }
-
+  /// Returns null on success, or a message to show.
+  Future<String?> create(Map<String, Object?> fields) async {
     state = state.copyWith(busy: true);
-
     try {
-      final smsSent = await ref
-          .read(adminRepositoryProvider)
-          .createUser({
+      final smsSent = await ref.read(adminRepositoryProvider).createUser({
         ...fields,
         'role': state.role,
         'healthCenterId': state.centreId,
-        if (state.role == 'chw')
-          'chwRole': state.chwRole,
+        if (state.role == 'chw') 'chwRole': state.chwRole,
       });
-
       return smsSent
           ? null
-          : 'Account created, but the SMS with the '
-              'sign-in details was not sent. '
-              'The user can request a credential reset.';
-    } on ApiException catch (error) {
-      return switch (error.code) {
+          : 'Account created, but the SMS with the sign-in details failed. '
+                'They can get in with Forgot PIN/password.';
+    } on ApiException catch (e) {
+      return switch (e.code) {
         'phone_or_email_taken' =>
           'That phone number or email already has an account.',
-        'unknown_health_center' =>
-          'Choose a valid health centre.',
-        'invalid_request' =>
-          'Check the account details and try again.',
-        _ =>
-          'Could not create the account. '
-              'Check your connection.',
+        'unknown_health_center' => 'Choose a health centre.',
+        'invalid_request' => 'Check the fields and try again.',
+        _ => 'Could not create the account. Check your connection.',
       };
-    } catch (_) {
-      return 'Could not create the account. Please try again.';
     } finally {
-      if (ref.mounted) {
-        state = state.copyWith(busy: false);
-      }
+      if (ref.mounted) state = state.copyWith(busy: false);
     }
   }
 }
 
 final newAccountProvider =
-    NotifierProvider.autoDispose<
-      NewAccountController,
-      NewAccountState
-    >(
+    NotifierProvider.autoDispose<NewAccountController, NewAccountState>(
       NewAccountController.new,
     );
 
+/// Creates a CHW (phone, optional email) or a supervisor (phone + email). The server texts them a
+/// temporary PIN/password, which they replace at first sign-in. Stateful only to own the text controllers.
 class NewAccountScreen extends ConsumerStatefulWidget {
   const NewAccountScreen({super.key});
 
   @override
-  ConsumerState<NewAccountScreen> createState() =>
-      _NewAccountScreenState();
+  ConsumerState<NewAccountScreen> createState() => _NewAccountScreenState();
 }
 
-class _NewAccountScreenState
-    extends ConsumerState<NewAccountScreen> {
+class _NewAccountScreenState extends ConsumerState<NewAccountScreen> {
   final _form = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _phone = TextEditingController();
@@ -320,49 +213,31 @@ class _NewAccountScreenState
 
   @override
   void dispose() {
-    _name.dispose();
-    _phone.dispose();
-    _village.dispose();
-    _email.dispose();
+    for (final c in [_name, _phone, _village, _email]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _create(NewAccountState state) async {
-    if (state.busy) return;
-    if (!(_form.currentState?.validate() ?? false)) {
-      return;
-    }
-
-    FocusScope.of(context).unfocus();
-
-    final isChw = state.role == 'chw';
-
-    final error = await ref
-        .read(newAccountProvider.notifier)
-        .create({
+  Future<void> _create(NewAccountState s) async {
+    if (!_form.currentState!.validate()) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final isChw = s.role == 'chw';
+    final error = await ref.read(newAccountProvider.notifier).create({
       'fullName': _name.text.trim(),
       'phone': normalizePhone(_phone.text),
       if (isChw) 'village': _village.text.trim(),
-      if (_email.text.trim().isNotEmpty)
-        'email': _email.text.trim(),
+      if (_email.text.trim().isNotEmpty) 'email': _email.text.trim(),
     });
-
-    if (!mounted) return;
-
-    if (error == null ||
-        error.startsWith('Account created')) {
-      _name.clear();
-      _phone.clear();
-      _village.clear();
-      _email.clear();
+    if (error == null || error.startsWith('Account created')) {
+      for (final c in [_name, _phone, _village, _email]) {
+        c.clear();
+      }
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
-          error ??
-              'Account created. Sign-in details '
-                  'were sent by SMS.',
+          error ?? 'Account created. Their sign-in details were sent by SMS.',
         ),
       ),
     );
@@ -370,26 +245,20 @@ class _NewAccountScreenState
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(newAccountProvider);
-    final controller =
-        ref.read(newAccountProvider.notifier);
+    final s = ref.watch(newAccountProvider);
+    final controller = ref.read(newAccountProvider.notifier);
     final centres = ref.watch(centresProvider);
-    final isChw = state.role == 'chw';
-
+    final isChw = s.role == 'chw';
     return Form(
       key: _form,
       child: PageBody(
         children: [
           const PageHeader(
             title: 'New account',
-            subtitle:
-                'The user receives temporary credentials '
-                'and must change them after signing in.',
+            subtitle: 'The person gets a temporary PIN or password by SMS and sets their own at first sign-in',
           ),
-
           Wrap(
             spacing: 8,
-            runSpacing: 8,
             children: [
               ChoiceChipPill(
                 label: 'CHW',
@@ -399,59 +268,33 @@ class _NewAccountScreenState
               ChoiceChipPill(
                 label: 'Supervisor',
                 selected: !isChw,
-                onTap: () =>
-                    controller.setRole('supervisor'),
+                onTap: () => controller.setRole('supervisor'),
               ),
             ],
           ),
-
           centres.when(
-            loading: () =>
-                const LinearProgressIndicator(),
+            loading: () => const LinearProgressIndicator(),
             error: (_, _) => Text(
               'Could not load health centres.',
-              style: HbText.bodySmall.copyWith(
-                color: HbColors.red,
-              ),
+              style: HbText.bodySmall.copyWith(color: HbColors.red),
             ),
-            data: (list) =>
-                DropdownButtonFormField<String>(
-              initialValue: list.any(
-                (centre) => centre.id == state.centreId,
-              )
-                  ? state.centreId
-                  : null,
-              decoration: const InputDecoration(
-                labelText: 'Health centre',
-              ),
+            data: (list) => DropdownButtonFormField<String>(
+              initialValue: s.centreId,
+              decoration: const InputDecoration(labelText: 'Health centre'),
               items: [
-                for (final centre in list)
-                  DropdownMenuItem<String>(
-                    value: centre.id,
-                    child: Text(centre.name),
-                  ),
+                for (final c in list)
+                  DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
-              onChanged: state.busy
-                  ? null
-                  : (value) {
-                      if (value != null) {
-                        controller.setCentre(value);
-                      }
-                    },
-              validator: (value) =>
-                  value == null
-                      ? 'Choose a health centre.'
-                      : null,
+              onChanged: (v) => v == null ? null : controller.setCentre(v),
+              validator: (v) => v == null ? 'Choose a health centre' : null,
             ),
           ),
-
           HbTextField(
             label: 'Full name',
             hint: 'Name',
             controller: _name,
             validator: requiredField,
           ),
-
           HbTextField(
             label: 'Phone number',
             hint: 'e.g. 0788 123 456',
@@ -459,28 +302,22 @@ class _NewAccountScreenState
             keyboardType: TextInputType.phone,
             validator: validatePhone,
           ),
-
           if (isChw) ...[
             Wrap(
               spacing: 8,
-              runSpacing: 8,
               children: [
                 ChoiceChipPill(
                   label: 'ASM',
-                  selected: state.chwRole == 'asm',
-                  onTap: () =>
-                      controller.setChwRole('asm'),
+                  selected: s.chwRole == 'asm',
+                  onTap: () => controller.setChwRole('asm'),
                 ),
                 ChoiceChipPill(
                   label: 'Binome',
-                  selected:
-                      state.chwRole == 'binome',
-                  onTap: () =>
-                      controller.setChwRole('binome'),
+                  selected: s.chwRole == 'binome',
+                  onTap: () => controller.setChwRole('binome'),
                 ),
               ],
             ),
-
             HbTextField(
               label: 'Village',
               hint: 'Village',
@@ -488,30 +325,18 @@ class _NewAccountScreenState
               validator: requiredField,
             ),
           ],
-
           HbTextField(
             label: isChw ? 'Email (optional)' : 'Email',
             hint: 'you@example.org',
             controller: _email,
             keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              if (isChw &&
-                  (value == null ||
-                      value.trim().isEmpty)) {
-                return null;
-              }
-
-              return validateEmail(value);
-            },
-          ),
-
-          HbButton.primary(
-            state.busy
-                ? 'Creating account...'
-                : 'Create account',
-            onPressed: state.busy
+            validator: (v) => isChw && (v == null || v.trim().isEmpty)
                 ? null
-                : () => _create(state),
+                : validateEmail(v),
+          ),
+          HbButton.primary(
+            s.busy ? 'Creating...' : 'Create account',
+            onPressed: s.busy ? null : () => _create(s),
           ),
         ],
       ),
@@ -521,47 +346,33 @@ class _NewAccountScreenState
 
 class NewCentreController extends Notifier<bool> {
   @override
-  bool build() => false;
+  bool build() => false; // busy
 
+  /// Returns null on success, or a message to show.
   Future<String?> create({
     required String name,
     required String district,
     required String sector,
     String? callNumber,
   }) async {
-    if (state) {
-      return 'A health centre is already being saved.';
-    }
-
     state = true;
-
     try {
       await ref
           .read(adminRepositoryProvider)
           .createCentre(
-        name: name.trim(),
-        district: district.trim(),
-        sector: sector.trim(),
-        callNumber: callNumber,
-      );
-
-      if (ref.mounted) {
-        ref.invalidate(centresProvider);
-      }
-
+            name: name,
+            district: district,
+            sector: sector,
+            callNumber: callNumber,
+          );
+      ref.invalidate(centresProvider);
       return null;
-    } on ApiException catch (error) {
-      return error.code == 'invalid_request'
+    } on ApiException catch (e) {
+      return e.code == 'invalid_request'
           ? 'Check the fields and try again.'
-          : 'Could not save the health centre. '
-              'Check your connection.';
-    } catch (_) {
-      return 'Could not save the health centre. '
-          'Please try again.';
+          : 'Could not save the health centre. Check your connection.';
     } finally {
-      if (ref.mounted) {
-        state = false;
-      }
+      if (ref.mounted) state = false;
     }
   }
 }
@@ -571,12 +382,12 @@ final newCentreProvider =
       NewCentreController.new,
     );
 
+/// The health centres, and a form to add one. Stateful only to own the text controllers.
 class CentresScreen extends ConsumerStatefulWidget {
   const CentresScreen({super.key});
 
   @override
-  ConsumerState<CentresScreen> createState() =>
-      _CentresScreenState();
+  ConsumerState<CentresScreen> createState() => _CentresScreenState();
 }
 
 class _CentresScreenState extends ConsumerState<CentresScreen> {
@@ -588,49 +399,31 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
-    _district.dispose();
-    _sector.dispose();
-    _call.dispose();
+    for (final c in [_name, _district, _sector, _call]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   Future<void> _create() async {
-    if (!(_form.currentState?.validate() ?? false)) {
-      return;
-    }
-
-    if (ref.read(newCentreProvider)) return;
-
-    FocusScope.of(context).unfocus();
-
+    if (!_form.currentState!.validate()) return;
+    final messenger = ScaffoldMessenger.of(context);
     final call = _call.text.trim();
-
     final error = await ref
         .read(newCentreProvider.notifier)
         .create(
-      name: _name.text,
-      district: _district.text,
-      sector: _sector.text,
-      callNumber:
-          call.isEmpty ? null : normalizePhone(call),
-    );
-
-    if (!mounted) return;
-
+          name: _name.text,
+          district: _district.text,
+          sector: _sector.text,
+          callNumber: call.isEmpty ? null : normalizePhone(call),
+        );
     if (error == null) {
-      _name.clear();
-      _district.clear();
-      _sector.clear();
-      _call.clear();
+      for (final c in [_name, _district, _sector, _call]) {
+        c.clear();
+      }
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          error ?? 'Health centre added successfully.',
-        ),
-      ),
+    messenger.showSnackBar(
+      SnackBar(content: Text(error ?? 'Health centre added')),
     );
   }
 
@@ -638,49 +431,34 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
   Widget build(BuildContext context) {
     final busy = ref.watch(newCentreProvider);
     final centres = ref.watch(centresProvider);
-
     return Form(
       key: _form,
       child: PageBody(
         children: [
           const PageHeader(
             title: 'Health centres',
-            subtitle:
-                'Manage the health centres assigned to users.',
+            subtitle: 'Each account belongs to one',
           ),
-
           ...centres.when(
-            loading: () => [
-              const LinearProgressIndicator(),
-            ],
+            loading: () => [const LinearProgressIndicator()],
             error: (_, _) => [
               Text(
                 'Could not load health centres.',
-                style: HbText.bodySmall.copyWith(
-                  color: HbColors.red,
-                ),
+                style: HbText.bodySmall.copyWith(color: HbColors.red),
               ),
             ],
             data: (list) => [
               if (list.isEmpty)
-                Text(
-                  'No health centres have been added.',
-                  style: HbText.bodySmall,
-                ),
-
+                Text('No health centres yet.', style: HbText.bodySmall),
               if (list.isNotEmpty)
                 HbCard(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Column(
                     children: [
-                      for (final (index, centre)
-                          in list.indexed) ...[
-                        if (index > 0)
+                      for (final (i, c) in list.indexed) ...[
+                        if (i > 0)
                           const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 18,
-                            ),
+                            padding: EdgeInsets.symmetric(horizontal: 18),
                             child: HbDivider(),
                           ),
                         Padding(
@@ -696,10 +474,7 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  centre.name,
-                                  style: HbText.headingSmall,
-                                ),
+                                child: Text(c.name, style: HbText.headingSmall),
                               ),
                             ],
                           ),
@@ -710,52 +485,35 @@ class _CentresScreenState extends ConsumerState<CentresScreen> {
                 ),
             ],
           ),
-
           const SectionHeading('New health centre'),
-
           HbTextField(
             label: 'Name',
             hint: 'e.g. Nyamata Health Centre',
             controller: _name,
-            validator: (value) {
-              final missing = requiredField(value);
-              if (missing != null) return missing;
-
-              return value!.trim().length < 2
-                  ? 'Enter at least 2 characters.'
-                  : null;
-            },
+            validator: (v) =>
+                requiredField(v) ??
+                (v!.trim().length < 2 ? 'At least 2 characters' : null),
           ),
-
           HbTextField(
             label: 'District',
             hint: 'District',
             controller: _district,
             validator: requiredField,
           ),
-
           HbTextField(
             label: 'Sector',
             hint: 'Sector',
             controller: _sector,
             validator: requiredField,
           ),
-
           HbTextField(
             label: 'Call number (optional)',
-            hint: 'For urgent-case calls',
+            hint: 'Shown to CHWs for urgent cases',
             controller: _call,
             keyboardType: TextInputType.phone,
-            validator: (value) {
-              if (value == null ||
-                  value.trim().isEmpty) {
-                return null;
-              }
-
-              return validatePhone(value);
-            },
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? null : validatePhone(v),
           ),
-
           HbButton.primary(
             busy ? 'Saving...' : 'Add health centre',
             onPressed: busy ? null : _create,
