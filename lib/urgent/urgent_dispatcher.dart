@@ -37,8 +37,9 @@ AlertFields alertFields(Visit v, Patient p, List<String> signs) {
   );
 }
 
-/// The urgent pathway (TRD §5): POST /alerts first, the SMS fallback when that fails or is slow, then wait for the ack. 
-
+/// The urgent pathway (TRD §5): POST /alerts first, the SMS fallback when that fails or is slow,
+/// then wait for the ack. States: sending -> sentSms -> confirmed | unconfirmed. An internet alert
+/// goes straight to confirmed, because the server only answers once the alert is stored.
 class UrgentDispatcher {
   UrgentDispatcher({
     required this.db,

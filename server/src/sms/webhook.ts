@@ -10,7 +10,6 @@ import { CodecError, ackTag, decodePlaintext, openSms, parseSms, type AlertField
 import type { SmsSender } from './gateway';
 import { unwrapKey } from './keystore';
 
-
 const PART_WINDOW_MS = 60 * 60_000; // how long part 1 waits for part 2
 // Name on a patient created from an SMS, which only carries the short ID. The phone's full record replaces it.
 export const STUB_PATIENT_NAME = '(awaiting sync)';

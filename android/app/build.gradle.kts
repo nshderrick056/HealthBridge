@@ -1,11 +1,20 @@
+import java.util.Properties
+
+// Release signing: android/key.properties (never committed) names the keystore. CI writes it from secrets.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    id("com.google.gms.google-services")
 }
 
 android {
-    namespace = "com.example.health_bridge"
+    namespace = "rw.healthbridge.health_bridge"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,8 +24,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.health_bridge"
+        applicationId = "rw.healthbridge.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,11 +37,34 @@ android {
         versionName = flutter.versionName
     }
 
+    // store goes to Google Play (no SMS permissions); managed is the programme-installed APK
+    // that sends SMS directly. SEND_SMS lives only in src/managed/AndroidManifest.xml (TRD §3).
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("store") {
+            dimension = "distribution"
+        }
+        create("managed") {
+            dimension = "distribution"
+            applicationIdSuffix = ".managed"
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            if (!keystoreProperties.isEmpty) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Without key.properties (local dev), release builds fall back to the debug key.
+            signingConfig = signingConfigs.getByName(if (keystoreProperties.isEmpty) "debug" else "release")
         }
     }
 }

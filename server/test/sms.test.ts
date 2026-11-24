@@ -7,7 +7,6 @@ import { unwrapKey } from '../src/sms/keystore';
 import { STUB_PATIENT_NAME } from '../src/sms/webhook';
 import { bearer, centre, chw, clearEmulators, fb, idToken, makeApp } from './emulator';
 
-
 const SECRET = 'test-webhook-secret-1234';
 const PHONE = '+250780000401';
 const { app, sender } = makeApp();

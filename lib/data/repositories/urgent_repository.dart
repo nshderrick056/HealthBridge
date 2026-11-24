@@ -4,7 +4,7 @@ import '../db.dart';
 import '../models.dart';
 
 /// Tracks an urgent alert's progress (sending -> sent_sms -> confirmed | unconfirmed).
-
+/// `lib/urgent/urgent_dispatcher.dart` drives the transitions.
 class UrgentRepository {
   UrgentRepository(this._db, {DateTime Function()? now})
     : _now = now ?? (() => DateTime.now().toUtc());
