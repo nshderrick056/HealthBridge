@@ -12,7 +12,7 @@ import '../data/db.dart';
 import '../data/models.dart';
 import 'firestore_mapping.dart';
 
-
+/// Wait before the next try after the 1st, 2nd, 3rd and later failures (TRD §4).
 Duration backoff(int attempts) => switch (attempts) {
   <= 1 => const Duration(seconds: 30),
   2 => const Duration(minutes: 2),
