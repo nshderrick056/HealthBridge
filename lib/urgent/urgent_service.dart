@@ -29,7 +29,8 @@ final callNumberProvider = StreamProvider<String?>((ref) {
       .map((r) => r?.value);
 });
 
-
+/// Keeps urgent alerts moving while the CHW is signed in: applies "HB OK" acks as they arrive and
+/// on resume, and the 10-minute "unconfirmed" rule every 15 s (the timer runs on the phone).
 class UrgentWatcher extends ConsumerStatefulWidget {
   const UrgentWatcher({super.key, required this.child});
 
