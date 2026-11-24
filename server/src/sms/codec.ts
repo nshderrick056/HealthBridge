@@ -10,7 +10,6 @@ import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:
 
 export const SMS_MAX = 160;
 
-
 /**
  * The tag on an acknowledgement: `HB OK <code> <tag>`, the first 12 hex of HMAC-SHA256 over
  * "HB OK <code>" with the device's SMS key. The phone checks it, so a reply from anyone without
