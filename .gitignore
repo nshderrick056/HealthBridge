@@ -1,3 +1,4 @@
+
 # Miscellaneous
 *.class
 *.log
@@ -18,10 +19,8 @@ migrate_working_dir/
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code settings
+# .vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
@@ -33,21 +32,21 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Symbolication related
+# Symbolication
 app.*.symbols
 
-# Obfuscation related
+# Obfuscation
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android build artifacts
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# Widget Preview related
+# Widget Preview
 .widget_preview/
 
-# Node (server/, dashboard/)
+# Node.js server and dashboard
 node_modules/
 dist/
 .next/
@@ -56,12 +55,12 @@ next-env.d.ts
 *.tsbuildinfo
 coverage/
 
-# Secrets: only .env.example is committed (this repo is public)
+# Environment configuration and secrets
 .env
 .env.*
 !.env.example
 
-# Android signing
+# Android signing credentials
 *.jks
 *.keystore
 key.properties
