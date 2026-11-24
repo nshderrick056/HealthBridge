@@ -7,7 +7,6 @@ import { HttpError } from '../http';
 import { callerOf, requireRole, requireUser } from '../middleware/auth';
 import { wrapKey } from '../sms/keystore';
 
-
 const body = z.object({
   buildFlavor: z.enum(['store', 'managed']),
   simPhone: z.string().min(6).max(20).optional(),
