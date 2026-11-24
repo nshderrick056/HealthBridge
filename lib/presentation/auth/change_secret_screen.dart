@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,81 +7,52 @@ import '../../data/providers.dart';
 import 'change_secret_controller.dart';
 import 'login_controller.dart';
 
+/// Shown after signing in with the temporary details the admin's SMS gave. A CHW sets a PIN; anyone
+/// with an email sets a password. Stateful only to own the text controllers.
 class ChangeSecretScreen extends ConsumerStatefulWidget {
   const ChangeSecretScreen({super.key});
 
   @override
-  ConsumerState<ChangeSecretScreen> createState() =>
-      _ChangeSecretScreenState();
+  ConsumerState<ChangeSecretScreen> createState() => _ChangeSecretScreenState();
 }
 
-class _ChangeSecretScreenState
-    extends ConsumerState<ChangeSecretScreen> {
+class _ChangeSecretScreenState extends ConsumerState<ChangeSecretScreen> {
   final _form = GlobalKey<FormState>();
-
   final _pin = TextEditingController();
-  final _confirmPin = TextEditingController();
+  final _pin2 = TextEditingController();
   final _password = TextEditingController();
-  final _confirmPassword = TextEditingController();
+  final _password2 = TextEditingController();
 
   @override
   void dispose() {
-    _pin.dispose();
-    _confirmPin.dispose();
-    _password.dispose();
-    _confirmPassword.dispose();
+    for (final c in [_pin, _pin2, _password, _password2]) {
+      c.dispose();
+    }
     super.dispose();
-  }
-
-  Future<void> _save({
-    required bool needsPin,
-    required bool needsPassword,
-  }) async {
-    if (!(_form.currentState?.validate() ?? false)) return;
-
-    FocusScope.of(context).unfocus();
-
-    await ref.read(changeSecretProvider.notifier).save(
-          pin: needsPin ? _pin.text.trim() : null,
-          password: needsPassword ? _password.text : null,
-        );
   }
 
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
-    final state = ref.watch(changeSecretProvider);
-
+    final s = ref.watch(changeSecretProvider);
+    final controller = ref.read(changeSecretProvider.notifier);
     final needsPin = session?.role == 'chw';
-    final needsPassword =
-        session?.email?.trim().isNotEmpty ?? false;
-
-    final title = needsPin && needsPassword
-        ? 'Set your PIN and password'
-        : needsPin
-            ? 'Set your new PIN'
-            : 'Set your new password';
+    final needsPassword = session?.email != null;
 
     return Scaffold(
-      backgroundColor: HbColors.canvas,
       body: SafeArea(
         child: Form(
           key: _form,
           child: ListView(
-            keyboardDismissBehavior:
-                ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(
-              20, 28, 20, 32,
-            ),
+            padding: const EdgeInsets.fromLTRB(18, 24, 18, 24),
             children: [
               PageHeader(
-                title: title,
+                title: 'Choose your own ${needsPin ? 'PIN' : 'password'}',
                 subtitle:
-                    'You signed in using temporary credentials. '
-                    'Choose your own credentials to continue.',
+                    'You signed in with the temporary details from the SMS. '
+                    'Set your own to continue.',
               ),
-              const SizedBox(height: 24),
-
+              const SizedBox(height: 16),
               if (needsPin) ...[
                 HbTextField(
                   label: 'New PIN',
@@ -92,28 +62,16 @@ class _ChangeSecretScreenState
                   keyboardType: TextInputType.number,
                   validator: validatePin,
                 ),
-                const SizedBox(height: 12),
                 HbTextField(
-                  label: 'Confirm new PIN',
-                  hint: 'Enter the same PIN',
-                  controller: _confirmPin,
+                  label: 'Repeat the PIN',
+                  hint: 'The same digits',
+                  controller: _pin2,
                   obscure: true,
                   keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Confirm your PIN.';
-                    }
-                    if (value.trim() != _pin.text.trim()) {
-                      return 'The PINs do not match.';
-                    }
-                    return null;
-                  },
+                  validator: (v) =>
+                      v?.trim() == _pin.text.trim() ? null : 'The PINs differ',
                 ),
               ],
-
-              if (needsPin && needsPassword)
-                const SizedBox(height: 24),
-
               if (needsPassword) ...[
                 HbTextField(
                   label: 'New password',
@@ -122,69 +80,37 @@ class _ChangeSecretScreenState
                   obscure: true,
                   validator: validatePassword,
                 ),
-                const SizedBox(height: 12),
                 HbTextField(
-                  label: 'Confirm new password',
-                  hint: 'Enter the same password',
-                  controller: _confirmPassword,
+                  label: 'Repeat the password',
+                  hint: 'The same password',
+                  controller: _password2,
                   obscure: true,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Confirm your password.';
-                    }
-                    if (value != _password.text) {
-                      return 'The passwords do not match.';
-                    }
-                    return null;
-                  },
+                  validator: (v) =>
+                      v == _password.text ? null : 'The passwords differ',
                 ),
               ],
-
-              if (!needsPin && !needsPassword)
+              if (s.error != null) ...[
+                const SizedBox(height: 12),
                 Text(
-                  'No credentials are available to change. '
-                  'Contact your administrator.',
-                  style: HbText.bodyMedium,
-                ),
-
-              if (state.error != null) ...[
-                const SizedBox(height: 16),
-                Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    state.error!,
-                    style: HbText.bodySmall.copyWith(
-                      color: HbColors.red,
-                    ),
-                  ),
+                  s.error!,
+                  style: HbText.bodySmall.copyWith(color: HbColors.red),
                 ),
               ],
-
-              const SizedBox(height: 28),
-
-              if (needsPin || needsPassword)
-                HbButton.primary(
-                  state.busy
-                      ? 'Saving changes...'
-                      : 'Save and continue',
-                  onPressed: state.busy
-                      ? null
-                      : () => _save(
-                            needsPin: needsPin,
-                            needsPassword: needsPassword,
-                          ),
-                ),
-
-              const SizedBox(height: 12),
-
-              HbButton.secondary(
-                'Log out',
-                onPressed: state.busy
+              const SizedBox(height: 22),
+              HbButton.primary(
+                s.busy ? 'Please wait...' : 'Save and continue',
+                onPressed: s.busy
                     ? null
-                    : () => ref
-                        .read(changeSecretProvider.notifier)
-                        .logout(),
+                    : () {
+                        if (!_form.currentState!.validate()) return;
+                        controller.save(
+                          pin: needsPin ? _pin.text.trim() : null,
+                          password: needsPassword ? _password.text : null,
+                        );
+                      },
               ),
+              const SizedBox(height: 8),
+              HbButton.secondary('Log out', onPressed: controller.logout),
             ],
           ),
         ),

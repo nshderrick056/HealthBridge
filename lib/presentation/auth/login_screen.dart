@@ -7,6 +7,7 @@ import '../../core/widgets/widgets.dart';
 import 'forgot_screen.dart';
 import 'login_controller.dart';
 
+/// Stateful only to own the text controllers; the busy and error state live in [LoginController].
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,19 +16,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _form = GlobalKey<FormState>();
-  late final TextEditingController _id;
+  late final _id = TextEditingController(
+    text: ref.read(settingsProvider).savedLoginId,
+  );
   final _secret = TextEditingController();
-
-  static const _errorOnGreen = Color(0xFFFFD7D2);
-
-  @override
-  void initState() {
-    super.initState();
-    _id = TextEditingController(
-      text: ref.read(settingsProvider).savedLoginId ?? '',
-    );
-  }
+  final _form = GlobalKey<FormState>();
 
   @override
   void dispose() {
@@ -39,79 +32,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   LoginController get _controller => ref.read(loginControllerProvider.notifier);
 
   void _submit(LoginState login) {
-    if (login.busy) return;
     if (!_form.currentState!.validate()) return;
-
-    FocusScope.of(context).unfocus();
-
-    switch (login.method) {
-      case LoginMethod.pin:
-      case LoginMethod.email:
-        _controller.submit(_id.text.trim(), _secret.text);
-      case LoginMethod.smsCode:
-        if (login.awaitingCode) {
-          _controller.confirmCode(_id.text.trim(), _secret.text.trim());
-        } else {
-          _controller.sendCode(_id.text.trim());
-        }
+    if (login.method != LoginMethod.smsCode) {
+      _controller.submit(_id.text, _secret.text);
+    } else if (login.awaitingCode) {
+      _controller.confirmCode(_id.text, _secret.text);
+    } else {
+      _controller.sendCode(_id.text);
     }
   }
 
-  void _choose(LoginMethod method, LoginState login) {
-    if (login.busy || login.method == method) return;
-
-    final switchingIdentifier =
-        (login.method == LoginMethod.email) != (method == LoginMethod.email);
-
-    if (switchingIdentifier) {
-      _id.clear();
-    }
-
+  void _choose(LoginMethod method) {
     _secret.clear();
-    _form.currentState?.reset();
-
-    FocusScope.of(context).unfocus();
     _controller.choose(method);
-  }
-
-  void _changeNumber() {
-    _secret.clear();
-    _controller.changeNumber();
-  }
-
-  void _openRecovery() {
-    FocusScope.of(context).unfocus();
-
-    Navigator.of(context)
-        .push(MaterialPageRoute<void>(builder: (_) => const ForgotScreen()));
   }
 
   @override
   Widget build(BuildContext context) {
     final login = ref.watch(loginControllerProvider);
-
     return _layout(login);
   }
 
-  String _instructions(LoginState login) {
-    if (login.method == LoginMethod.email) {
-      return 'Sign in with your registered email address.';
-    }
-
-    if (login.awaitingCode) {
-      return 'Enter the verification code sent to your phone.';
-    }
-
-    return 'Use the phone number registered with your account.';
-  }
-
+  /// The fields and button for the chosen way of signing in.
   List<Widget> _fields(LoginState login) {
     final busy = login.busy;
-
     final (idField, secretField, action, busyLabel) = switch (login.method) {
       LoginMethod.pin => (
         HbTextField(
-          key: const ValueKey('login-phone-pin'),
           label: 'Phone number',
           hint: 'e.g. 0788 123 456',
           controller: _id,
@@ -120,7 +67,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           labelColor: Colors.white,
         ),
         HbTextField(
-          key: const ValueKey('login-pin'),
           label: 'PIN',
           hint: '4 to 6 digits',
           controller: _secret,
@@ -134,7 +80,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       LoginMethod.email => (
         HbTextField(
-          key: const ValueKey('login-email'),
           label: 'Email',
           hint: 'you@example.org',
           controller: _id,
@@ -143,7 +88,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           labelColor: Colors.white,
         ),
         HbTextField(
-          key: const ValueKey('login-password'),
           label: 'Password',
           hint: 'Enter your password',
           controller: _secret,
@@ -156,7 +100,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       LoginMethod.smsCode => (
         HbTextField(
-          key: const ValueKey('login-phone-sms'),
           label: 'Phone number',
           hint: 'e.g. 0788 123 456',
           controller: _id,
@@ -166,8 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         login.awaitingCode
             ? HbTextField(
-                key: const ValueKey('login-sms-code'),
-                label: 'Verification code',
+                label: 'Code from the SMS',
                 hint: '6 digits',
                 controller: _secret,
                 keyboardType: TextInputType.number,
@@ -175,24 +117,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 labelColor: Colors.white,
               )
             : null,
-        login.awaitingCode ? 'Verify and sign in' : 'Send code',
-        login.awaitingCode ? 'Verifying...' : 'Sending code...',
+        login.awaitingCode ? 'Sign in' : 'Send code',
+        login.awaitingCode ? 'Signing in...' : 'Sending...',
       ),
     };
-
     return [
       idField,
       if (secretField != null) ...[const SizedBox(height: 18), secretField],
       if (login.error != null) ...[
         const SizedBox(height: 12),
-        Semantics(
-          liveRegion: true,
-          child: Text(
-            login.error!,
-            style: HbText.bodyMedium.copyWith(
-              color: _errorOnGreen,
-              fontWeight: FontWeight.w500,
-            ),
+        Text(
+          login.error!,
+          style: HbText.bodyMedium.copyWith(
+            color: _errorOnGreen,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -204,15 +142,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       const SizedBox(height: 4),
       if (login.awaitingCode)
         _Link(
-          'Change number or request another code',
-          onTap: busy ? null : _changeNumber,
+          'Change number or send a new code',
+          onTap: busy ? null : _controller.changeNumber,
         ),
-      _Link('Forgot PIN or password?', onTap: busy ? null : _openRecovery),
+      _Link(
+        'Forgot PIN or password?',
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const ForgotScreen())),
+      ),
     ];
   }
 
+  /// Light red that stays readable on the green (about 7:1).
+  static const _errorOnGreen = Color(0xFFFFD7D2);
+
   Widget _layout(LoginState login) => Scaffold(
+    // The green stays still when the keyboard opens; only the form scrolls up above it.
     resizeToAvoidBottomInset: false,
+    // The gradient ends in this colour, so no light edge can show below it.
     backgroundColor: HbColors.brandDeep,
     body: Stack(
       fit: StackFit.expand,
@@ -224,7 +172,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ),
         SafeArea(
           child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: EdgeInsets.fromLTRB(
               24,
               40,
@@ -247,7 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    _instructions(login),
+                    'Use the phone number your supervisor registered.',
                     style: HbText.bodyMedium.copyWith(color: HbColors.onBrand),
                   ),
                   const SizedBox(height: 20),
@@ -255,16 +202,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     spacing: 4,
                     runSpacing: 4,
                     children: [
-                      for (final (method, label) in const [
+                      for (final (m, label) in const [
                         (LoginMethod.pin, 'PIN'),
                         (LoginMethod.smsCode, 'SMS code'),
                         (LoginMethod.email, 'Email'),
                       ])
                         _MethodChip(
                           label,
-                          selected: login.method == method,
-                          enabled: !login.busy,
-                          onTap: () => _choose(method, login),
+                          selected: login.method == m,
+                          onTap: () => _choose(m),
                         ),
                     ],
                   ),
@@ -272,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ..._fields(login),
                   const SizedBox(height: 32),
                   Text(
-                    'Your visits are stored on this phone and synced when you have a connection.',
+                    'Your visits are kept on this phone and sent when you have signal.',
                     style: HbText.bodySmall.copyWith(color: HbColors.onBrand),
                   ),
                 ],
@@ -285,30 +231,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   );
 }
 
+/// White pill for the chosen method, plain text for the others: a segmented control on green.
 class _MethodChip extends StatelessWidget {
-  const _MethodChip(
-    this.label, {
-    required this.selected,
-    required this.enabled,
-    required this.onTap,
-  });
+  const _MethodChip(this.label, {required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
-  final bool enabled;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Semantics(
     selected: selected,
     button: true,
-    enabled: enabled,
     child: Material(
       color: selected ? Colors.white : Colors.transparent,
       shape: const StadiumBorder(),
       child: InkWell(
         customBorder: const StadiumBorder(),
-        onTap: enabled ? onTap : null,
+        onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           child: Text(
@@ -331,22 +271,18 @@ class _Link extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    link: true,
-    enabled: onTap != null,
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text(
-          label,
-          style: HbText.bodyMedium.copyWith(
-            color: HbColors.lime,
-            fontWeight: FontWeight.w500,
-            decoration: TextDecoration.underline,
-            decorationColor: HbColors.lime,
-          ),
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(8),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        label,
+        style: HbText.bodyMedium.copyWith(
+          color: HbColors.lime,
+          fontWeight: FontWeight.w500,
+          decoration: TextDecoration.underline,
+          decorationColor: HbColors.lime,
         ),
       ),
     ),
