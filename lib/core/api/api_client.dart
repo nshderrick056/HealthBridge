@@ -1,14 +1,13 @@
-
-import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
 import '../auth/auth_service.dart';
 
+/// A refused or failed call to the HealthBridge API. [code] is the server's error code
+/// (`invalid_transition`, `phone_or_email_taken`, ...), or `network` when it could not be reached.
 class ApiException implements Exception {
   ApiException(this.status, this.code);
-
   final int status;
   final String code;
 
@@ -16,6 +15,8 @@ class ApiException implements Exception {
   String toString() => 'ApiException($status, $code)';
 }
 
+/// JSON calls to the HealthBridge API as the signed-in user (supervisor and admin screens). Sends the
+/// Firebase ID token; when it has expired, refreshes it once and repeats the call.
 class ApiClient {
   ApiClient({
     required this.auth,
@@ -29,28 +30,14 @@ class ApiClient {
   final void Function(Session) onSession;
   final http.Client _client;
 
-  static const _timeout = Duration(seconds: 20);
+  Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) =>
+      _call('GET', path, query: query);
 
-  Future<Map<String, dynamic>> get(
-    String path, {
-    Map<String, String>? query,
-  }) {
-    return _call('GET', path, query: query);
-  }
+  Future<Map<String, dynamic>> post(String path, [Object? body]) =>
+      _call('POST', path, body: body);
 
-  Future<Map<String, dynamic>> post(
-    String path, [
-    Object? body,
-  ]) {
-    return _call('POST', path, body: body);
-  }
-
-  Future<Map<String, dynamic>> patch(
-    String path,
-    Object body,
-  ) {
-    return _call('PATCH', path, body: body);
-  }
+  Future<Map<String, dynamic>> patch(String path, Object body) =>
+      _call('PATCH', path, body: body);
 
   Future<Map<String, dynamic>> _call(
     String method,
@@ -58,115 +45,43 @@ class ApiClient {
     Object? body,
     Map<String, String>? query,
   }) async {
-    var currentSession = session();
-
-    if (currentSession == null) {
-      throw ApiException(401, 'signed_out');
+    var s = session();
+    if (s == null) throw ApiException(401, 'signed_out');
+    var res = await _send(method, path, s, body, query);
+    if (res.statusCode == 401) {
+      s = await auth.refresh(s);
+      onSession(s);
+      res = await _send(method, path, s, body, query);
     }
-
-    var response = await _send(
-      method,
-      path,
-      currentSession,
-      body,
-      query,
-    );
-
-    if (response.statusCode == 401) {
-      try {
-        currentSession = await auth.refresh(currentSession);
-      } on AuthException {
-        throw ApiException(401, 'session_expired');
-      } catch (_) {
-        throw ApiException(401, 'session_expired');
-      }
-
-      onSession(currentSession);
-
-      response = await _send(
-        method,
-        path,
-        currentSession,
-        body,
-        query,
-      );
+    final json = res.body.isEmpty
+        ? const <String, dynamic>{}
+        : jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode >= 400) {
+      throw ApiException(res.statusCode, json['error'] as String? ?? 'error');
     }
-
-    final data = _decodeResponse(response);
-
-    if (response.statusCode >= 400) {
-      final error = data['error'];
-
-      throw ApiException(
-        response.statusCode,
-        error is String && error.isNotEmpty
-            ? error
-            : 'error',
-      );
-    }
-
-    return data;
-  }
-
-  Map<String, dynamic> _decodeResponse(
-    http.Response response,
-  ) {
-    if (response.body.trim().isEmpty) {
-      return <String, dynamic>{};
-    }
-
-    try {
-      final decoded = jsonDecode(response.body);
-
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
-
-      throw ApiException(
-        response.statusCode,
-        'invalid_response',
-      );
-    } on FormatException {
-      throw ApiException(
-        response.statusCode,
-        'invalid_response',
-      );
-    }
+    return json;
   }
 
   Future<http.Response> _send(
     String method,
     String path,
-    Session currentSession,
+    Session s,
     Object? body,
     Map<String, String>? query,
   ) async {
-    final uri = Uri.parse(
-      '${auth.baseUrl}$path',
-    ).replace(queryParameters: query);
-
-    final request = http.Request(method, uri);
-
-    request.headers['authorization'] =
-        'Bearer ${currentSession.accessToken}';
-
-    request.headers['accept'] = 'application/json';
-
+    final req = http.Request(
+      method,
+      Uri.parse('${auth.baseUrl}$path').replace(queryParameters: query),
+    );
+    req.headers['authorization'] = 'Bearer ${s.accessToken}';
     if (body != null) {
-      request.headers['content-type'] = 'application/json';
-      request.body = jsonEncode(body);
+      req.headers['content-type'] = 'application/json';
+      req.body = jsonEncode(body);
     }
-
     try {
-      final streamedResponse = await _client
-          .send(request)
-          .timeout(_timeout);
-
       return await http.Response.fromStream(
-        streamedResponse,
-      ).timeout(_timeout);
-    } on TimeoutException {
-      throw ApiException(0, 'timeout');
+        await _client.send(req).timeout(const Duration(seconds: 20)),
+      );
     } on Exception {
       throw ApiException(0, 'network');
     }
